@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { ROLE_LABEL, type Ingredient } from './types'
-import { missing } from './logic'
+import { missing, pantrySet } from './logic'
 import { tintOf, usePhotoUrl } from './Thumb'
 import { compressPhoto } from './photo'
 import { canGoBack } from './ui'
@@ -18,7 +18,7 @@ export default function DishPage() {
   // undefined — ще завантажується, null — такої страви немає
   const dish = useLiveQuery(async () => (await db.dishes.get(id)) ?? null, [id])
   const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
-  const pantry = useMemo(() => new Set((pantryRows ?? []).map(p => p.name)), [pantryRows])
+  const pantry = useMemo(() => pantrySet(pantryRows), [pantryRows])
   const [variantId, setVariantId] = useState<string | null>(null)
   const [open, setOpen] = useState<string | null>(null)
   const [chosen, setChosen] = useState<Record<string, string | null>>({})

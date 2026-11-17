@@ -5,6 +5,7 @@ import { ensureSeed } from './db'
 import Catalog from './Catalog'
 import DishPage from './DishPage'
 import DishForm from './DishForm'
+import Pantry from './Pantry'
 // шрифти лежать у самому застосунку, щоб працювали без інтернету
 import '@fontsource/onest/400.css'
 import '@fontsource/onest/500.css'
@@ -16,6 +17,7 @@ import './styles.css'
 const router = createHashRouter([
   { path: '/', element: <Catalog /> },
   { path: '/new', element: <DishForm /> },
+  { path: '/pantry', element: <Pantry /> },
   { path: '/dish/:id', element: <DishPage /> },
   { path: '/dish/:id/edit', element: <DishForm /> }
 ])

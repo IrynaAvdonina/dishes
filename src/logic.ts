@@ -57,7 +57,36 @@ export function plural(n: number, one: string, few: string, many: string) {
 }
 
 /** Для пошуку: нижній регістр і один вид апострофа (м'ясо = мʼясо = м’ясо). */
-export const norm = (s: string) => s.toLowerCase().replace(/[’ʼ`]/g, "'").trim()
+export const norm = (s: string) => s.toLowerCase().replace(/[’ʼ`]/g, "'").replace(/\s+/g, ' ').trim()
+
+/** Набір «що є вдома» для порівняння без урахування регістру й пробілів. */
+export const pantrySet = (rows: { name: string }[] | undefined) => new Set((rows ?? []).map(p => norm(p.name)))
+
+/**
+ * Продукти зі страв, яких немає вдома: найчастіші спершу (для підказок у «Моїх продуктах»).
+ * Заміни теж враховуються, але важать менше.
+ */
+export function suggestProducts(dishes: Dish[], pantry: Set<string>): { name: string; count: number }[] {
+  const score = new Map<string, { name: string; count: number; w: number }>()
+  const add = (name: string, w: number, seen: Set<string>) => {
+    const k = norm(name)
+    if (!k || pantry.has(k) || seen.has(k)) return
+    seen.add(k)
+    const e = score.get(k) ?? { name: name.trim(), count: 0, w: 0 }
+    e.w += w
+    if (w === 1) e.count++
+    score.set(k, e)
+  }
+  for (const d of dishes) {
+    const seen = new Set<string>()
+    const ings = [...d.ingredients, ...d.variants.flatMap(v => v.addIngredients ?? [])]
+    for (const g of ings) add(g.name, 1, seen)
+    for (const g of ings) for (const r of g.replacements ?? []) add(r, 0.3, seen)
+  }
+  return [...score.values()]
+    .sort((a, b) => b.w - a.w || a.name.localeCompare(b.name, 'uk'))
+    .map(({ name, count }) => ({ name, count }))
+}
 
 export function matchesSearch(d: Dish, needle: string) {
   if (!needle) return true
@@ -65,17 +94,17 @@ export function matchesSearch(d: Dish, needle: string) {
   return norm(d.name).includes(needle) || ings.some(i => norm(i.name).includes(needle))
 }
 
-/** Чого не вистачає серед обов'язкових. Група: достатньо одного інгредієнта з групи. */
+/** Чого не вистачає серед обов'язкових. Група: достатньо одного інгредієнта з групи. pantry — з pantrySet(). */
 export function missing(ings: Ingredient[], pantry: Set<string>): string[] {
   const out: string[] = []
   const groups = new Map<string, Ingredient[]>()
   for (const g of ings) {
     if (!g.required) continue
     if (g.group) { groups.set(g.group, [...(groups.get(g.group) ?? []), g]); continue }
-    if (!pantry.has(g.name)) out.push(g.name)
+    if (!pantry.has(norm(g.name))) out.push(g.name)
   }
   for (const [, members] of groups)
-    if (!members.some(m => pantry.has(m.name))) out.push(members.map(m => m.name).join('/'))
+    if (!members.some(m => pantry.has(norm(m.name)))) out.push(members.map(m => m.name).join('/'))
   return out
 }
 

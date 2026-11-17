@@ -6,8 +6,9 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy, s
 import { CSS } from '@dnd-kit/utilities'
 import { db } from './db'
 import { ROLE_LABEL, TASTES, type Dish, type Role } from './types'
-import { activeFilterCount, ingredientCount, matchesSearch, mergeFilters, missing, norm, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
+import { activeFilterCount, ingredientCount, matchesSearch, mergeFilters, missing, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
+import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
 import { IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
 
@@ -59,7 +60,7 @@ function SortableRow({ d, pantry }: { d: Dish; pantry: Set<string> }) {
 export default function Catalog() {
   const all = useLiveQuery(() => db.dishes.toArray(), [])
   const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
-  const pantry = useMemo(() => new Set((pantryRows ?? []).map(p => p.name)), [pantryRows])
+  const pantry = useMemo(() => pantrySet(pantryRows), [pantryRows])
 
   const [q, setQ] = useState('')
   const [filters, setFiltersS] = useState<Filters>(() => mergeFilters(load<Partial<Filters> | null>('filters', null)))
@@ -190,12 +191,7 @@ export default function Catalog() {
       </div>
 
       {!reorder && <Link to="/new" className="fab" aria-label="Нова страва"><IcPlus /></Link>}
-      <nav className="tabs">
-        <button className="on" aria-current="page">Страви</button>
-        <button disabled>Пошук</button>
-        <button disabled>Пари</button>
-        <button disabled>Продукти</button>
-      </nav>
+      <Tabs />
 
       {sheet === 'sort' && (
         <div className="overlay">
