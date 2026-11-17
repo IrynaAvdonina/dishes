@@ -36,6 +36,10 @@ export interface Dish {
   order: number
   /** час (мс), коли страву приховано; undefined — не приховано */
   hiddenAt?: number
+  /** складність, 1–5 зірочок */
+  effort?: number
+  /** наскільки подобається, 1–5 сердечок */
+  love?: number
 }
 
 export interface PantryItem {

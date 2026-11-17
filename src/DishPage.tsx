@@ -8,6 +8,7 @@ import { MiniThumb, tintOf, usePhotoUrl } from './Thumb'
 import DishPicker from './DishPicker'
 import { addPair, partnerRole, removePair } from './pairsData'
 import { compressPhoto } from './photo'
+import { RATE, RatingView } from './Rating'
 import { canGoBack } from './ui'
 import { IcBack, IcCamera, IcClose, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
 
@@ -80,6 +81,16 @@ export default function DishPage() {
             <div className="stat" style={{ background: '#FDF4CF', borderRadius: '18px 4px 18px 18px' }}><div className="k" style={{ color: '#5B4A00' }}>Духовка</div><div className="v">{dish.oven ? <><IcOven />Потрібна</> : 'Не потрібна'}</div></div>
             <div className="stat" style={{ background: '#E5EBFC', borderRadius: '4px 18px 18px 18px' }}><div className="k" style={{ color: 'var(--mute)' }}>Інгредієнтів</div><div className="v">{rows.length}</div></div>
           </div>
+          {(dish.effort || dish.love) && (
+            <div className="stats" style={{ marginTop: 8 }}>
+              {(['effort', 'love'] as const).filter(k => dish[k]).map((k, i) => (
+                <div key={k} className="stat" style={{ background: k === 'love' ? '#FDE6D8' : '#EEF1FB', borderRadius: i ? '18px 4px 18px 18px' : '18px 18px 18px 4px' }}>
+                  <div className="k" style={{ color: k === 'love' ? '#5C2A0B' : 'var(--mute)' }}>{RATE[k].label}: {RATE[k].words[dish[k]!]}</div>
+                  <div className="v"><RatingView kind={k} value={dish[k]} s={18} /></div>
+                </div>
+              ))}
+            </div>
+          )}
 
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
             {dish.tags.map((t, i) => <span key={t} className="tag" style={{ background: TAGC[i % 5][0], color: TAGC[i % 5][1] }}>{t}</span>)}

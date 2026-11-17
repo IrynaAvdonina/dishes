@@ -89,6 +89,9 @@ async function dish(v: unknown, n: number): Promise<Dish> {
     order: typeof d.order === 'number' ? d.order : n
   }
   if (typeof d.hiddenAt === 'number') out.hiddenAt = d.hiddenAt
+  const rate = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 5 ? x : undefined
+  if (rate(d.effort)) out.effort = rate(d.effort)
+  if (rate(d.love)) out.love = rate(d.love)
   if (isStr(d.photo) && d.photo.startsWith('data:image/')) {
     try { out.photo = await (await fetch(d.photo)).blob() } catch { /* фото пропускаємо */ }
   }

@@ -57,7 +57,7 @@ export default function Search() {
     .filter(d => !d.hiddenAt && roles[d.role])
     .map(d => bestMatch(d, pantry, wantNow))
     .filter((m): m is Match => !!m)
-    .sort((a, b) => a.cov.missing.length - b.cov.missing.length || a.cov.subs.length - b.cov.subs.length || a.dish.order - b.dish.order)
+    .sort((a, b) => a.cov.missing.length - b.cov.missing.length || a.cov.subs.length - b.cov.subs.length || (b.dish.love ?? 0) - (a.dish.love ?? 0) || a.dish.order - b.dish.order)
   const ready = matches.filter(m => m.cov.missing.length === 0)
   const one = matches.filter(m => m.cov.missing.length === 1)
   const two = matches.filter(m => m.cov.missing.length === 2)

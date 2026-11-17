@@ -53,7 +53,7 @@ export default function Pairs() {
       const missing = [...new Map([...ms.cov.missing, ...mp.cov.missing].map(n => [norm(n), n])).values()]
       const subs = [...ms.cov.subs, ...mp.cov.subs].map(s => `${s.name} → ${s.sub}`)
       return { key: `${side.id}-${protein.id}`, side, protein, ms, mp, missing, subs }
-    }).sort((a, b) => a.missing.length - b.missing.length || a.subs.length - b.subs.length || a.side.order - b.side.order || a.protein.order - b.protein.order)
+    }).sort((a, b) => a.missing.length - b.missing.length || a.subs.length - b.subs.length || ((b.side.love ?? 0) + (b.protein.love ?? 0)) - ((a.side.love ?? 0) + (a.protein.love ?? 0)) || a.side.order - b.side.order || a.protein.order - b.protein.order)
   }, [dishes, pantry])
 
   if (!dishes || !pantryRows) return null

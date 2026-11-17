@@ -25,6 +25,9 @@ export interface Draft {
   role: Role | null
   timeMin: string
   oven: boolean
+  /** 0 — не вказано */
+  effort: number
+  love: number
   tags: string[]
   photo?: Blob
   items: ItemDraft[]
@@ -37,7 +40,7 @@ export const newKey = () => `k${Date.now().toString(36)}${(seq++).toString(36)}`
 export const emptyItem = (): ItemDraft => ({ key: newKey(), names: [''], amount: '', required: true, replacements: '' })
 
 export const emptyDraft = (): Draft => ({
-  name: '', role: null, timeMin: '', oven: false, tags: [], items: [emptyItem()], variants: []
+  name: '', role: null, timeMin: '', oven: false, effort: 0, love: 0, tags: [], items: [emptyItem()], variants: []
 })
 
 /** Інгредієнти з бази → пункти форми (групу збираємо в один пункт). */
@@ -63,7 +66,7 @@ export function toItems(ings: Ingredient[] = []): ItemDraft[] {
 
 export function toDraft(d: Dish): Draft {
   return {
-    name: d.name, role: d.role, timeMin: String(d.timeMin), oven: d.oven, tags: [...d.tags], photo: d.photo,
+    name: d.name, role: d.role, timeMin: String(d.timeMin), oven: d.oven, effort: d.effort ?? 0, love: d.love ?? 0, tags: [...d.tags], photo: d.photo,
     items: toItems(d.ingredients),
     variants: d.variants.map(v => ({ key: newKey(), id: v.id, name: v.name, items: toItems(v.addIngredients) }))
   }
@@ -110,7 +113,7 @@ export function validate(d: Draft): Errors {
 }
 
 /** Готові поля страви з чернетки (без id, order, hiddenAt, pairs). */
-export function fromDraft(d: Draft): Pick<Dish, 'name' | 'role' | 'timeMin' | 'oven' | 'tags' | 'photo' | 'ingredients' | 'variants'> {
+export function fromDraft(d: Draft): Pick<Dish, 'name' | 'role' | 'timeMin' | 'oven' | 'effort' | 'love' | 'tags' | 'photo' | 'ingredients' | 'variants'> {
   const used = new Set<string>()
   const ingredients = fromItems(d.items, used)
   const variants: Variant[] = d.variants
@@ -119,7 +122,7 @@ export function fromDraft(d: Draft): Pick<Dish, 'name' | 'role' | 'timeMin' | 'o
       const add = fromItems(v.items, used)
       return add.length ? { id: v.id, name: clean(v.name), addIngredients: add } : { id: v.id, name: clean(v.name) }
     })
-  return { name: clean(d.name), role: d.role!, timeMin: Number(d.timeMin), oven: d.oven, tags: d.tags, photo: d.photo, ingredients, variants }
+  return { name: clean(d.name), role: d.role!, timeMin: Number(d.timeMin), oven: d.oven, effort: d.effort || undefined, love: d.love || undefined, tags: d.tags, photo: d.photo, ingredients, variants }
 }
 
 /** Для перевірки «чи є незбережені зміни» (фото порівнюємо окремо). */

@@ -7,7 +7,7 @@ export function mergeFilters(saved: Partial<Filters> | null | undefined): Filter
   return f
 }
 
-export type SortKey = 'manual' | 'time' | 'ing' | 'name'
+export type SortKey = 'manual' | 'time' | 'ing' | 'name' | 'love' | 'effort'
 export type Dir = 'asc' | 'desc'
 
 export interface Filters {
@@ -43,6 +43,9 @@ export function sortDishes(list: Dish[], key: SortKey, dir: Dir) {
     key === 'time' ? x.timeMin - y.timeMin
     : key === 'ing' ? ingredientCount(x.ingredients) - ingredientCount(y.ingredients)
     : key === 'name' ? x.name.localeCompare(y.name, 'uk')
+    // без оцінки — у кінці списку
+    : key === 'love' ? (y.love ?? 0) - (x.love ?? 0)
+    : key === 'effort' ? (x.effort ?? 6) - (y.effort ?? 6)
     : x.order - y.order
   // напрям змінює лише головний ключ; рівні страви лишаються у вашому порядку
   return [...list].sort((x, y) => s * main(x, y) || x.order - y.order)

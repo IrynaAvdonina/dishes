@@ -148,11 +148,38 @@ const DEFS: Def[] = [
     v('tomato', 'Томатний', r('помідори', '800 г', 'томати у власному соку'))]]
 ]
 
+/**
+ * Оцінки з блокнота: [складність ★, подобається ♥], 1–5. undefined — не вказано.
+ * Крильця: варіанти мали ★ і ★★★ — взято середнє. Хек — у рамці «не дуже».
+ */
+const RATINGS: Record<string, [effort?: number, love?: number]> = {
+  'Рублені котлети': [3, 4],
+  'Курка з грибами в сметані': [2, 3],
+  'Курка в кисло-солодкому соусі з кунжутом': [3, 3],
+  'Стріпси': [4, 5],
+  'Котлети в паніровці': [3, 3],
+  'Запечені курячі ніжки в соусі': [1, 2],
+  'Запечені курячі крильця': [2, 3],
+  'Курка з томатною пастою': [2, 2],
+  'Курка з засмажкою': [3, 2],
+  'М’ясо по-французьки': [5, 5],
+  'Запечена ковбаска': [1, 3],
+  'Відбивні': [5, 5],
+  'Запечені курячі стегна': [2, 3],
+  'Хек у клярі': [4, 1],
+  'Фрикадельки': [3, 2],
+  'Смажена свинина': [1]
+}
+
 /** «Мої продукти» для нового користувача: лише найпростіше, решту кожен додає сам. */
 export const seedPantry = ['сіль', 'олія', 'цукор', 'чорний перець']
 
 export function seedDishes(): Dish[] {
-  return DEFS.map(([name, role, timeMin, oven, tags, ingredients, variants = []], n) => ({
-    id: n + 1, name, role, timeMin, oven, tags, ingredients, variants, pairs: [], order: n
-  }))
+  return DEFS.map(([name, role, timeMin, oven, tags, ingredients, variants = []], n) => {
+    const d: Dish = { id: n + 1, name, role, timeMin, oven, tags, ingredients, variants, pairs: [], order: n }
+    const [effort, love] = RATINGS[name] ?? []
+    if (effort) d.effort = effort
+    if (love) d.love = love
+    return d
+  })
 }

@@ -8,6 +8,7 @@ import { db } from './db'
 import { ROLE_LABEL, TASTES, type Dish, type Role } from './types'
 import { activeFilterCount, coverage, ingredientCount, matchesSearch, mergeFilters, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
+import { RatingView } from './Rating'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
 import { IcBackup, IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
@@ -17,7 +18,9 @@ const SORTS: { k: SortKey; label: string; short: string; hint: string; a: string
   { k: 'manual', label: 'Мій порядок', short: 'Мій', hint: 'Так, як ви розставили вручну', a: 'За вашим порядком', b: 'У зворотному' },
   { k: 'time', label: 'За часом', short: 'Час', hint: 'Від швидких до довгих', a: 'Спершу швидкі', b: 'Спершу довгі' },
   { k: 'ing', label: 'За кількістю інгредієнтів', short: 'Інгр.', hint: 'Від простих до складних', a: 'Спершу прості', b: 'Спершу складні' },
-  { k: 'name', label: 'За назвою', short: 'А–Я', hint: 'За алфавітом', a: 'А → Я', b: 'Я → А' }
+  { k: 'name', label: 'За назвою', short: 'А–Я', hint: 'За алфавітом', a: 'А → Я', b: 'Я → А' },
+  { k: 'love', label: 'Найулюбленіші', short: '♥', hint: 'За сердечками; без оцінки — у кінці', a: 'Спершу улюблені', b: 'Спершу найменш улюблені' },
+  { k: 'effort', label: 'Найпростіші', short: '★', hint: 'За зірочками складності; без оцінки — у кінці', a: 'Спершу прості', b: 'Спершу складні' }
 ]
 
 function load<T>(k: string, d: T): T {
@@ -35,6 +38,8 @@ function RowBody({ d, pantry, sortKey }: { d: Dish; pantry: Set<string>; sortKey
         <div className="dsub">
           {sortKey === 'time' && <b>{d.timeMin} хв</b>}
           {sortKey === 'ing' && <b>{ingredientCount(d.ingredients)} інгр.</b>}
+          {sortKey === 'love' && (d.love ? <RatingView kind="love" value={d.love} s={14} /> : <span>без оцінки</span>)}
+          {sortKey === 'effort' && (d.effort ? <RatingView kind="effort" value={d.effort} s={14} /> : <span>без оцінки</span>)}
         </div>
         <div className="dreq">
           <div>Потрібно: {requiredNames(d.ingredients)}</div>

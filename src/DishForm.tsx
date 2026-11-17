@@ -4,6 +4,7 @@ import { db } from './db'
 import { ROLE_LABEL, TASTES } from './types'
 import { draftSignature, emptyDraft, emptyItem, fromDraft, newKey, toDraft, validate, type Draft, type Errors, type ItemDraft } from './draft'
 import { compressPhoto } from './photo'
+import { RatingInput } from './Rating'
 import { prunePairs } from './pairsData'
 import { shapeOf, tintOf, usePhotoUrl } from './Thumb'
 import { ROLES, canGoBack, pillStyle } from './ui'
@@ -223,6 +224,13 @@ export default function DishForm() {
             {([[true, 'Потрібна'], [false, 'Не потрібна']] as const).map(([v, l], i) =>
               <button key={l} className="pill" aria-pressed={draft.oven === v} style={pillStyle(draft.oven === v, i)} onClick={() => set('oven', v)}>{l}</button>)}
           </div>
+
+          {/* Оцінки */}
+          <h2 className="u">Оцінка</h2>
+          <div className="hint">Необов'язково. Натисніть ще раз, щоб прибрати.</div>
+          <RatingInput kind="effort" value={draft.effort} onChange={v => set('effort', v)} />
+          <div style={{ height: 6 }} />
+          <RatingInput kind="love" value={draft.love} onChange={v => set('love', v)} />
 
           {/* Смак */}
           <h2 className="u">Смак</h2>
