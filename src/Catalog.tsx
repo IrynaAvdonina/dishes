@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy, s
 import { CSS } from '@dnd-kit/utilities'
 import { db } from './db'
 import { ROLE_LABEL, TASTES, type Dish, type Role } from './types'
-import { activeFilterCount, coverage, ingredientCount, matchesSearch, mergeFilters, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
+import { activeFilterCount, coverage, matchesSearch, mergeFilters, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
 import { RatingView } from './Rating'
 import Tabs from './Tabs'
@@ -28,8 +28,9 @@ function load<T>(k: string, d: T): T {
 }
 
 function RowBody({ d, pantry, sortKey }: { d: Dish; pantry: Set<string>; sortKey: SortKey }) {
-  // «немає» — лише те, чого немає і заміною з продуктів вдома не закрити
-  const lack = coverage(d.ingredients, pantry).missing
+  // «є» — що з обов'язкового вже вдома (разом із замінами), «немає» — чого не закрити навіть заміною
+  const cov = coverage(d.ingredients, pantry)
+  const have = [...cov.have, ...cov.subs.map(s => `${s.name} → ${s.sub}`)]
   return (
     <>
       <Thumb dish={d} />
@@ -37,13 +38,12 @@ function RowBody({ d, pantry, sortKey }: { d: Dish; pantry: Set<string>; sortKey
         <div className="dname">{d.name}</div>
         <div className="dsub">
           {sortKey === 'time' && <b>{d.timeMin} хв</b>}
-          {sortKey === 'ing' && <b>{ingredientCount(d.ingredients)} інгр.</b>}
           {sortKey === 'love' && (d.love ? <RatingView kind="love" value={d.love} s={14} /> : <span>без оцінки</span>)}
           {sortKey === 'effort' && (d.effort ? <RatingView kind="effort" value={d.effort} s={14} /> : <span>без оцінки</span>)}
         </div>
         <div className="dreq">
-          <div>Потрібно: {requiredNames(d.ingredients)}</div>
-          {lack.length > 0 && <div className="lack">немає: {lack.join(', ')}</div>}
+          {have.length > 0 && <div className="have">є: {have.join(', ')}</div>}
+          {cov.missing.length > 0 && <div className="lack">немає: {cov.missing.join(', ')}</div>}
         </div>
       </Link>
     </>

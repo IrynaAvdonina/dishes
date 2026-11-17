@@ -135,6 +135,8 @@ export function requiredNames(ings: Ingredient[]): string {
 // ── пошук за наявними продуктами ────────────────────────────────────
 
 export interface Coverage {
+  /** що з обов'язкового є вдома (для групи «або» — те, що саме є) */
+  have: string[]
   /** чого немає навіть із замінами */
   missing: string[]
   /** що закривається заміною з «Моїх продуктів» */
@@ -146,6 +148,7 @@ export interface Coverage {
  * Група «або»: достатньо одного; заміною може стати заміна будь-кого з групи.
  */
 export function coverage(ings: Ingredient[], pantry: Set<string>): Coverage {
+  const have: string[] = []
   const missing: string[] = []
   const subs: Coverage['subs'] = []
   const has = (n: string) => pantry.has(norm(n))
@@ -156,13 +159,14 @@ export function coverage(ings: Ingredient[], pantry: Set<string>): Coverage {
     units.set(k, [...(units.get(k) ?? []), g])
   }
   for (const members of units.values()) {
-    if (members.some(m => has(m.name))) continue
+    const present = members.find(m => has(m.name))
+    if (present) { have.push(present.name); continue }
     const label = [...new Set(members.map(m => m.name))].join(' або ')
     const sub = members.flatMap(m => m.replacements ?? []).find(has)
     if (sub) subs.push({ name: label, sub })
     else missing.push(label)
   }
-  return { missing, subs }
+  return { have, missing, subs }
 }
 
 export const dishIngredients = (d: Dish, v?: Variant) => [...d.ingredients, ...(v?.addIngredients ?? [])]
