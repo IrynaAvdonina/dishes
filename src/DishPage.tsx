@@ -4,7 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { ROLE_LABEL, type Ingredient } from './types'
 import { missing } from './logic'
-import { shapeOf, tintOf, usePhotoUrl } from './Thumb'
+import { tintOf, usePhotoUrl } from './Thumb'
+import { compressPhoto } from './photo'
+import { canGoBack } from './ui'
 import { IcBack, IcCamera, IcEyeOff, IcOven, IcPlate, IcSwap, RoleGlyph } from './icons'
 
 const ROLE_BG = { side: '#F6D96B', protein: '#F5A97F', full: '#9FB1EE' }
@@ -22,7 +24,7 @@ export default function DishPage() {
   const [chosen, setChosen] = useState<Record<string, string | null>>({})
   const url = usePhotoUrl(dish?.photo)
   // якщо сторінку відкрито напряму (без історії), «назад» веде в каталог, а не з застосунку
-  const goBack = () => (window.history.state?.idx ?? 0) > 0 ? nav(-1) : nav('/', { replace: true })
+  const goBack = () => canGoBack() ? nav(-1) : nav('/', { replace: true })
 
   if (dish === undefined) return null
   if (dish === null) return (
@@ -45,7 +47,7 @@ export default function DishPage() {
   const lackLeft = rows.filter(g => isLack(g) && !chosen[key(g)])
   const [bg, ink] = tintOf(dish.id!)
 
-  const addPhoto = async (f?: File | null) => { if (f) await db.dishes.update(dish.id!, { photo: f }) }
+  const addPhoto = async (f?: File | null) => { if (f) await db.dishes.update(dish.id!, { photo: await compressPhoto(f) }) }
 
   return (
     <div className="app">
@@ -130,7 +132,7 @@ export default function DishPage() {
       <div className="bottombar">
         <button aria-label="Приховати страву" onClick={async () => { await db.dishes.update(dish.id!, { hiddenAt: Date.now() }); goBack() }}
           style={{ flex: 'none', width: 56, height: 56, border: '1.5px solid #B7C3EE', borderRadius: '18px 4px 18px 18px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IcEyeOff /></button>
-        <button disabled style={{ flex: 1, height: 56, border: 0, borderRadius: '18px 18px 4px 18px', background: 'var(--cobalt)', color: '#fff', fontSize: 16, fontWeight: 600, opacity: .5 }}>Редагувати (етап 2)</button>
+        <Link to={`/dish/${dish.id}/edit`} style={{ flex: 1, height: 56, borderRadius: '18px 18px 4px 18px', background: 'var(--cobalt)', color: '#fff', fontSize: 16, fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>Редагувати</Link>
       </div>
     </div>
   )

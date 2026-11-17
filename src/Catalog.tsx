@@ -8,23 +8,15 @@ import { db } from './db'
 import { ROLE_LABEL, TASTES, type Dish, type Role } from './types'
 import { activeFilterCount, ingredientCount, matchesSearch, mergeFilters, missing, norm, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
+import { ROLES, pillStyle } from './ui'
 import { IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
 
-const ROLES: { k: Role; bg: string; dot: string; r: string }[] = [
-  { k: 'side', bg: '#FDF4CF', dot: '#F6D96B', r: '22px 4px 22px 22px' },
-  { k: 'protein', bg: '#FDE6D8', dot: '#F5A97F', r: '4px 22px 22px 22px' },
-  { k: 'full', bg: '#E5EBFC', dot: '#9FB1EE', r: '22px 22px 22px 4px' }
-]
 const SORTS: { k: SortKey; label: string; short: string; hint: string; a: string; b: string }[] = [
   { k: 'manual', label: 'Мій порядок', short: 'Мій', hint: 'Так, як ви розставили вручну', a: 'За вашим порядком', b: 'У зворотному' },
   { k: 'time', label: 'За часом', short: 'Час', hint: 'Від швидких до довгих', a: 'Спершу швидкі', b: 'Спершу довгі' },
   { k: 'ing', label: 'За кількістю інгредієнтів', short: 'Інгр.', hint: 'Від простих до складних', a: 'Спершу прості', b: 'Спершу складні' },
   { k: 'name', label: 'За назвою', short: 'А–Я', hint: 'За алфавітом', a: 'А → Я', b: 'Я → А' }
 ]
-const PILL_R = ['22px 22px 4px 22px', '22px 4px 22px 22px', '4px 22px 22px 22px', '22px 22px 22px 4px']
-const pillStyle = (on: boolean, i: number): React.CSSProperties => ({
-  borderRadius: PILL_R[i % 4], border: on ? '0' : '1.5px dashed #B7C3EE', background: on ? '#3149B8' : '#fff', color: on ? '#fff' : '#3149B8'
-})
 
 function load<T>(k: string, d: T): T {
   try { const v = localStorage.getItem(k); return v ? JSON.parse(v) as T : d } catch { return d }
@@ -197,7 +189,7 @@ export default function Catalog() {
         <div style={{ height: 90 }} />
       </div>
 
-      <button className="fab" aria-label="Нова страва" disabled title="Етап 2"><IcPlus /></button>
+      {!reorder && <Link to="/new" className="fab" aria-label="Нова страва"><IcPlus /></Link>}
       <nav className="tabs">
         <button className="on" aria-current="page">Страви</button>
         <button disabled>Пошук</button>

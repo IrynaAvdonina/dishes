@@ -67,3 +67,23 @@ nav.tabs .on{background:var(--soft);color:var(--cobalt);font-weight:600}
 .mark{flex:none;width:14px;height:14px}
 .warnbox{margin-top:18px;border-radius:18px 18px 4px 18px;background:#FDE6D8;padding:12px 14px;font-size:14px;line-height:1.35;color:#5C2A0B}
 .bottombar{flex:none;padding:12px 20px calc(20px + env(safe-area-inset-bottom));border-top:1px solid var(--line);display:flex;gap:10px;background:#fff}
+/* форма страви */
+.fhead{flex:none;display:flex;align-items:center;gap:12px;padding:calc(16px + env(safe-area-inset-top)) 20px 10px}
+.fhead h1{margin:0;font-size:20px;color:var(--cobalt)}
+.backbtn{flex:none;width:48px;height:48px;border:0;border-radius:16px 16px 4px 16px;background:var(--soft);display:flex;align-items:center;justify-content:center}
+.form{padding:0 20px}
+.form h2{margin:26px 0 4px;font-size:17px;color:var(--cobalt)}
+.hint{font-size:12.5px;color:var(--mute);line-height:1.35;margin:4px 0 8px}
+.inp{width:100%;min-width:0;height:50px;border:0;border-radius:14px;background:var(--soft);padding:0 14px;font:inherit;font-size:15px;color:var(--ink);outline:none}
+.inp::placeholder{color:#7F89B8}
+.inp:focus{box-shadow:inset 0 0 0 2px var(--cobalt)}
+.inp[aria-invalid=true]{box-shadow:inset 0 0 0 2px var(--warn)}
+.err{color:var(--warn);font-size:12.5px;font-weight:600;margin-top:6px}
+.icard{border:1.5px solid var(--line);border-radius:20px 20px 4px 20px;padding:10px;margin-top:10px;display:flex;flex-direction:column;gap:8px}
+.irow{display:flex;align-items:center;gap:8px}
+.or{flex:none;width:34px;font-size:13px;font-weight:600;color:var(--mute);text-align:center}
+.small{height:44px;padding:0 14px;font-size:13.5px;font-weight:600}
+.vcard{border-radius:24px 24px 6px 24px;background:#F7F8FD;padding:12px;margin-top:12px}
+.ptile{flex:none;width:96px;height:96px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ptile img{width:100%;height:100%;object-fit:cover}
+.pbtn{height:44px;border:1.5px solid #B7C3EE;border-radius:16px 16px 4px 16px;background:#fff;color:var(--cobalt);font-size:14px;font-weight:600;padding:0 14px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
