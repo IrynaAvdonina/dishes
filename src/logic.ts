@@ -63,7 +63,15 @@ export function plural(n: number, one: string, few: string, many: string) {
 export const norm = (s: string) => s.toLowerCase().replace(/[’ʼ`]/g, "'").replace(/\s+/g, ' ').trim()
 
 /** Набір «що є вдома» для порівняння без урахування регістру й пробілів. */
-export const pantrySet = (rows: { name: string }[] | undefined) => new Set((rows ?? []).map(p => norm(p.name)))
+/**
+ * Базове, що є вдома завжди: не пишемо як інгредієнти й не ведемо в «Моїх продуктах».
+ * Якщо таке трапиться (у заміні чи в старих даних) — вважається наявним.
+ */
+export const STAPLES = ['сіль', 'олія', 'цукор', 'чорний перець', 'паприка', 'лавровий лист']
+const STAPLE_SET = new Set(STAPLES.map(norm))
+export const isStaple = (name: string) => STAPLE_SET.has(norm(name))
+
+export const pantrySet = (rows: { name: string }[] | undefined) => new Set([...(rows ?? []).map(p => norm(p.name)), ...STAPLE_SET])
 
 /**
  * Продукти зі страв, яких немає вдома: найчастіші спершу (для підказок у «Моїх продуктах»).

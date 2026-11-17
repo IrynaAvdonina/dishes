@@ -30,6 +30,21 @@ class AppDB extends Dexie {
       })
       await tx.table('pantry').filter((p: PantryItem) => isSalt(p.name)).delete()
     })
+    // одноразово: базове, що є завжди (олія, цукор, спеції), теж не інгредієнт і не продукт.
+    // Список зафіксований тут навмисно: оновлення бази не має змінюватися згодом.
+    this.version(4).upgrade(async tx => {
+      const base = new Set(['сіль', 'олія', 'цукор', 'чорний перець', 'паприка', 'лавровий лист'])
+      const isBase = (n: string) => base.has(n.trim().toLowerCase().replace(/\s+/g, ' '))
+      const strip = (list?: Ingredient[]) => list?.filter(g => !isBase(g.name))
+      await tx.table('dishes').toCollection().modify((d: Dish) => {
+        d.ingredients = strip(d.ingredients) ?? []
+        d.variants = d.variants.map(v => {
+          const add = strip(v.addIngredients)
+          return add?.length ? { ...v, addIngredients: add } : { id: v.id, name: v.name }
+        })
+      })
+      await tx.table('pantry').filter((p: PantryItem) => isBase(p.name)).delete()
+    })
   }
 }
 

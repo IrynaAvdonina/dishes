@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { norm, pantrySet, plural, suggestProducts } from './logic'
+import { isStaple, norm, pantrySet, plural, suggestProducts } from './logic'
 import { pillStyle } from './ui'
 import Tabs from './Tabs'
 import { IcClose, IcPlus, IcSearch } from './icons'
@@ -27,7 +27,8 @@ export default function Pantry() {
     .sort((a, b) => a.name.localeCompare(b.name, 'uk'))
   const sugg = (needle ? suggestions.filter(s => norm(s.name).includes(needle)) : suggestions).slice(0, needle ? 8 : 16)
   const typedNew = needle && !have.has(needle) && !sugg.some(s => norm(s.name) === needle)
-  const typedHave = needle && have.has(needle)
+  const typedStaple = needle && isStaple(needle)
+  const typedHave = needle && have.has(needle) && !typedStaple
 
   const add = async (name: string) => {
     const clean = name.replace(/\s+/g, ' ').trim().toLowerCase()
@@ -87,6 +88,7 @@ export default function Pantry() {
 
         <h2 className="u" style={{ margin: '24px 0 4px', fontSize: 17, color: 'var(--cobalt)' }}>Є вдома</h2>
         {typedHave && <div className="hint">«{q.trim()}» уже є в списку.</div>}
+        {typedStaple && <div className="hint">«{q.trim()}» вважається, що є завжди: додавати не потрібно.</div>}
         {mine.length === 0 ? (
           <div className="empty" style={{ marginTop: 10 }}>
             <div style={{ fontSize: 14, color: 'var(--mute)', lineHeight: 1.4 }}>{needle ? 'Серед ваших продуктів такого немає' : 'Поки порожньо. Додайте продукти вище.'}</div>
