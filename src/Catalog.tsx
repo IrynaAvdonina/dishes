@@ -10,7 +10,8 @@ import { activeFilterCount, ingredientCount, matchesSearch, mergeFilters, missin
 import Thumb from './Thumb'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
-import { IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
+import { IcBackup, IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
+import BackupSheet from './Backup'
 
 const SORTS: { k: SortKey; label: string; short: string; hint: string; a: string; b: string }[] = [
   { k: 'manual', label: 'Мій порядок', short: 'Мій', hint: 'Так, як ви розставили вручну', a: 'За вашим порядком', b: 'У зворотному' },
@@ -66,7 +67,7 @@ export default function Catalog() {
   const [filters, setFiltersS] = useState<Filters>(() => mergeFilters(load<Partial<Filters> | null>('filters', null)))
   const [sortKey, setSortKeyS] = useState<SortKey>(() => load('sortKey', 'manual'))
   const [dir, setDirS] = useState<Dir>(() => load('dir', 'asc'))
-  const [sheet, setSheet] = useState<'sort' | 'filters' | null>(null)
+  const [sheet, setSheet] = useState<'sort' | 'filters' | 'backup' | null>(null)
   const [reorder, setReorder] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
   // новий порядок після перетягування, поки база ще зберігає (щоб рядок не «стрибав» назад)
@@ -116,7 +117,10 @@ export default function Catalog() {
     <div className="app">
       <header className="top">
         <h1 className="u">Страви</h1>
-        <span style={{ fontSize: 13, color: 'var(--mute)' }}>{all.length} у каталозі</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--mute)' }}>
+          {all.length} у каталозі
+          <button className="iconbtn" aria-label="Резервна копія: зберегти або відновити дані" onClick={() => setSheet('backup')}><IcBackup /></button>
+        </span>
       </header>
       <div className="scallop" />
 
@@ -168,10 +172,13 @@ export default function Catalog() {
           </div>
         ))}
 
-        {visible.length === 0 && (
+        {visible.length === 0 && (all.length === 0 ? (
+          <div className="empty"><div className="u" style={{ fontSize: 16, color: 'var(--cobalt)' }}>Каталог порожній</div>
+            <div style={{ fontSize: 13.5, color: 'var(--mute)', marginTop: 6, lineHeight: 1.4 }}>Додайте страву кнопкою «+» або відновіть дані з резервної копії (кнопка вгорі праворуч)</div></div>
+        ) : (
           <div className="empty"><div className="u" style={{ fontSize: 16, color: 'var(--cobalt)' }}>Нічого не знайшли</div>
             <div style={{ fontSize: 13.5, color: 'var(--mute)', marginTop: 6, lineHeight: 1.4 }}>Послабте фільтри або поверніть приховані страви</div></div>
-        )}
+        ))}
 
         {hidden.length > 0 && (
           <>
@@ -253,6 +260,8 @@ export default function Catalog() {
           </div>
         </div>
       )}
+
+      {sheet === 'backup' && <BackupSheet onClose={() => setSheet(null)} />}
     </div>
   )
 }

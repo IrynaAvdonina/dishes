@@ -13,7 +13,8 @@ export const IcCamera = () => <svg width="18" height="18" viewBox="0 0 24 24" {.
 export const IcSwap = () => <svg width="18" height="18" viewBox="0 0 24 24" {...S} stroke="#3149B8" strokeWidth={2.2} aria-hidden="true"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>
 export const IcClose = ({ c = '#4A5690' }: { c?: string }) => <svg width="18" height="18" viewBox="0 0 24 24" {...S} stroke={c} strokeWidth={2.4} aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
 export const IcTrash = () => <svg width="20" height="20" viewBox="0 0 24 24" {...S} stroke="#B4491F" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/></svg>
-export const IcPlate =({ c }: { c: string }) => <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke={c} strokeWidth="1.5" opacity=".55" aria-hidden="true"><circle cx="26" cy="26" r="22"/><circle cx="26" cy="26" r="14"/><path d="M20 24c2-4 10-4 12 0M21 31c3 3 7 3 10 0" strokeLinecap="round"/></svg>
+export const IcBackup = () => <svg width="20" height="20" viewBox="0 0 24 24" {...S} stroke="#3149B8" aria-hidden="true"><path d="M4 14v4a2 2 0 002 2h12a2 2 0 002-2v-4M12 4v11M8 11l4 4 4-4"/></svg>
+export const IcPlate = ({ c }: { c: string }) => <svg width="52" height="52" viewBox="0 0 52 52" fill="none" stroke={c} strokeWidth="1.5" opacity=".55" aria-hidden="true"><circle cx="26" cy="26" r="22"/><circle cx="26" cy="26" r="14"/><path d="M20 24c2-4 10-4 12 0M21 31c3 3 7 3 10 0" strokeLinecap="round"/></svg>
 
 export function RoleGlyph({ role, s = 20 }: { role: Role; s?: number }) {
   if (role === 'side') return <svg width={s} height={s} viewBox="0 0 24 24" fill="#F6D96B" stroke="#8A6B00" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5"/></svg>
