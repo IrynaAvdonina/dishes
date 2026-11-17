@@ -9,7 +9,7 @@ import { draftSignature, emptyDraft, emptyItem, fromDraft, newKey, toDraft, vali
 import { compressPhoto } from './photo'
 import { RatingInput } from './Rating'
 import { prunePairs } from './pairsData'
-import { shapeOf, tintOf, usePhotoUrl } from './Thumb'
+import { shapeOf, tintOf, usePhotoUrls } from './Thumb'
 import { ROLES, canGoBack, pillStyle } from './ui'
 import { IcBack, IcCamera, IcCheck, IcClose, IcPlate, IcPlus, IcTrash, RoleGlyph } from './icons'
 
@@ -99,7 +99,7 @@ export default function DishForm() {
 
   const [status, setStatus] = useState<'loading' | 'missing' | 'ready'>(id ? 'loading' : 'ready')
   const [draft, setDraft] = useState<Draft>(emptyDraft)
-  const initial = useRef({ sig: draftSignature(emptyDraft()), photo: undefined as Blob | undefined })
+  const initial = useRef({ sig: draftSignature(emptyDraft()), photos: [] as Blob[] })
   const [errors, setErrors] = useState<Errors>({})
   const [tried, setTried] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -113,14 +113,15 @@ export default function DishForm() {
       if (!d) { setStatus('missing'); return }
       const dr = toDraft(d)
       if (!dr.items.length) dr.items = [emptyItem()]
-      initial.current = { sig: draftSignature(dr), photo: dr.photo }
+      initial.current = { sig: draftSignature(dr), photos: dr.photos }
       setDraft(dr)
       setStatus('ready')
     })
     return () => { alive = false }
   }, [id])
 
-  const dirty = status === 'ready' && (draftSignature(draft) !== initial.current.sig || draft.photo !== initial.current.photo)
+  const dirty = status === 'ready' && (draftSignature(draft) !== initial.current.sig
+    || draft.photos.length !== initial.current.photos.length || draft.photos.some((p, i) => p !== initial.current.photos[i]))
 
   // захист від втрати змін: кнопка «назад» на телефоні, жест, закриття вкладки
   const blocker = useBlocker(({ currentLocation, nextLocation }) =>
@@ -140,7 +141,7 @@ export default function DishForm() {
     })
   }
   const toggleTag = (t: string) => setDraft(d => ({ ...d, tags: d.tags.includes(t) ? d.tags.filter(x => x !== t) : [...d.tags, t] }))
-  const url = usePhotoUrl(draft.photo)
+  const urls = usePhotoUrls(draft.photos)
   const [bg, ink] = tintOf(id ?? 0)
 
   const leave = (after: () => void) => { allowLeave.current = true; after() }
@@ -173,7 +174,14 @@ export default function DishForm() {
     leave(() => canGoBack(2) ? nav(-2) : nav('/', { replace: true }))
   }
 
-  const pickPhoto = async (f?: File | null) => { if (f) set('photo', await compressPhoto(f)) }
+  // нові фото додаються в кінець; перше — обкладинка
+  const addPhotos = async (files: FileList | null) => {
+    if (!files?.length) return
+    const added = await Promise.all([...files].map(f => compressPhoto(f)))
+    setDraft(d => ({ ...d, photos: [...d.photos, ...added] }))
+  }
+  const removePhoto = (i: number) => setDraft(d => ({ ...d, photos: d.photos.filter((_, k) => k !== i) }))
+  const coverPhoto = (i: number) => setDraft(d => ({ ...d, photos: [d.photos[i], ...d.photos.filter((_, k) => k !== i)] }))
 
   if (status === 'loading') return null
   if (status === 'missing') return (
@@ -198,15 +206,21 @@ export default function DishForm() {
       <div className="scroll">
         <div className="form">
           {/* Фото */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 16 }}>
-            <div className="ptile" style={{ background: bg, borderRadius: shapeOf(id ?? 0) }}>
-              {url ? <img src={url} alt="Фото страви" /> : <IcPlate c={ink} />}
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-start' }}>
-              <label className="pbtn"><IcCamera />{draft.photo ? 'Змінити фото' : 'Додати фото'}
-                <input type="file" accept="image/*" hidden onChange={e => { pickPhoto(e.target.files?.[0]); e.target.value = '' }} /></label>
-              {draft.photo && <button className="textbtn" style={{ color: 'var(--warn)' }} onClick={() => set('photo', undefined)}>Прибрати фото</button>}
-            </div>
+          <div className="photos-row" style={{ marginTop: 16 }}>
+            {urls.length === 0 && <div className="ptile" style={{ background: bg, borderRadius: shapeOf(id ?? 0) }}><IcPlate c={ink} /></div>}
+            {urls.map((u, i) => (
+              <div key={u} className="pslot">
+                <div className="ptile" style={{ background: bg, borderRadius: shapeOf((id ?? 0) + i) }}>
+                  <img src={u} alt={`Фото ${i + 1}${i === 0 ? ', обкладинка' : ''}`} />
+                </div>
+                <button className="pdel" aria-label={`Прибрати фото ${i + 1}`} onClick={() => removePhoto(i)}><IcClose c="#fff" /></button>
+                {i === 0
+                  ? <span className="pcap">обкладинка</span>
+                  : <button className="textbtn pcap" style={{ height: 32 }} onClick={() => coverPhoto(i)} aria-label={`Зробити фото ${i + 1} обкладинкою`}>на обкладинку</button>}
+              </div>
+            ))}
+            <label className="pbtn" style={{ alignSelf: 'center', flex: 'none' }}><IcCamera />{urls.length ? 'Ще фото' : 'Додати фото'}
+              <input type="file" accept="image/*" multiple hidden onChange={e => { addPhotos(e.target.files); e.target.value = '' }} /></label>
           </div>
 
           {/* Назва */}

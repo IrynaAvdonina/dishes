@@ -7,6 +7,17 @@ export const TINTS: [string, string][] = [['#FDF4CF', '#8A6B00'], ['#FDE6D8', '#
 export const shapeOf = (id: number) => SHAPES[((id * 5 + 1) % 6 + 6) % 6]
 export const tintOf = (id: number) => TINTS[((id * 7 + 2) % 6 + 6) % 6]
 
+/** Адреси для кількох фото (звільняються, коли фото змінюються). */
+export function usePhotoUrls(photos?: Blob[]) {
+  const [urls, setUrls] = useState<string[]>([])
+  useEffect(() => {
+    const u = (photos ?? []).map(p => URL.createObjectURL(p))
+    setUrls(u)
+    return () => u.forEach(x => URL.revokeObjectURL(x))
+  }, [photos])
+  return urls
+}
+
 export function usePhotoUrl(photo?: Blob) {
   const [url, setUrl] = useState<string>()
   useEffect(() => {
@@ -30,7 +41,7 @@ export function MiniThumb({ dish, size = 56 }: { dish: Dish; size?: number }) {
 export default function Thumb({ dish }: { dish: Dish }) {
   const id = dish.id ?? 0
   const [bg, ink] = tintOf(id)
-  const url = usePhotoUrl(dish.photo)
+  const url = usePhotoUrl(dish.photos?.[0])
   return (
     <div className="thumb" role="img" aria-label={`${dish.name}`}>
       <div className="shape" style={{ background: bg, borderRadius: shapeOf(id) }}>

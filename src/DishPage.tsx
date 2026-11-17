@@ -1,16 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { ROLE_LABEL, type Dish, type Ingredient } from './types'
 import { isStaple, missing, norm, pantrySet } from './logic'
-import { MiniThumb, tintOf, usePhotoUrl } from './Thumb'
+import { MiniThumb, tintOf, usePhotoUrls } from './Thumb'
 import DishPicker from './DishPicker'
 import { addPair, partnerRole, removePair } from './pairsData'
 import { compressPhoto } from './photo'
 import { RATE, RatingView } from './Rating'
 import { canGoBack } from './ui'
-import { IcBack, IcCamera, IcCheck, IcClose, IcTrash, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
+import { IcBack, IcCamera, IcCheck, IcClose, IcStar, IcTrash, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
 
 const ROLE_BG = { side: '#F6D96B', protein: '#F5A97F', full: '#9FB1EE' }
 const TAGC: [string, string][] = [['#E3F1E4', '#2F6B3A'], ['#F6E4F0', '#8A3C74'], ['#E8F3F6', '#2D6577'], ['#FDF4CF', '#8A6B00'], ['#FDE6D8', '#9A4A1C']]
@@ -32,7 +32,9 @@ export default function DishPage() {
   const [askDelPhoto, setAskDelPhoto] = useState(false)
   useEffect(() => { if (!askDelPhoto) return; const t = setTimeout(() => setAskDelPhoto(false), 4000); return () => clearTimeout(t) }, [askDelPhoto])
   const all = useLiveQuery(() => db.dishes.toArray(), [])
-  const url = usePhotoUrl(dish?.photo)
+  const urls = usePhotoUrls(dish?.photos)
+  const [photoIdx, setPhotoIdx] = useState(0)
+  const gallery = useRef<HTMLDivElement>(null)
   // якщо сторінку відкрито напряму (без історії), «назад» веде в каталог, а не з застосунку
   const goBack = () => canGoBack() ? nav(-1) : nav('/', { replace: true })
 
@@ -67,23 +69,54 @@ export default function DishPage() {
     const n = norm(name)
     const rowsHere = (pantryRows ?? []).filter(p => norm(p.name) === n)
     if (rowsHere.length) await db.pantry.bulkDelete(rowsHere.map(p => p.name))
-    else await db.pantry.put({ name: name.replace(/s+/g, ' ').trim().toLowerCase() })
+    else await db.pantry.put({ name: name.replace(/\s+/g, ' ').trim().toLowerCase() })
   }
 
-  const addPhoto = async (f?: File | null) => { if (f) await db.dishes.update(dish.id!, { photo: await compressPhoto(f) }) }
-  const delPhoto = async () => { await db.dishes.update(dish.id!, { photo: undefined }); setAskDelPhoto(false) }
+  // фото: нові додаються в кінець (нічого не замінюють), перше — обкладинка
+  const photos = dish.photos ?? []
+  const cur = Math.min(photoIdx, Math.max(0, photos.length - 1))
+  const showPhoto = (i: number) => { const el = gallery.current; if (el) el.scrollTo({ left: i * el.clientWidth, behavior: 'smooth' }); setPhotoIdx(i) }
+  const addPhotos = async (files: FileList | null) => {
+    if (!files?.length) return
+    const added = await Promise.all([...files].map(f => compressPhoto(f)))
+    await db.dishes.update(dish.id!, { photos: [...photos, ...added] })
+    setTimeout(() => showPhoto(photos.length), 50)
+  }
+  const delPhoto = async () => {
+    const next = photos.filter((_, i) => i !== cur)
+    await db.dishes.update(dish.id!, { photos: next.length ? next : undefined })
+    setAskDelPhoto(false)
+    showPhoto(Math.max(0, cur - 1))
+  }
+  const makeCover = async () => {
+    await db.dishes.update(dish.id!, { photos: [photos[cur], ...photos.filter((_, i) => i !== cur)] })
+    showPhoto(0)
+  }
 
   return (
     <div className="app">
       <div className="scroll">
         <div className="hero" style={{ background: bg, borderRadius: `0 0 48px 12px` }}>
-          {url ? <img src={url} alt="" /> : <div style={{ transform: 'scale(2.3)' }}><IcPlate c={ink} /></div>}
+          {urls.length > 0
+            ? <div className="gallery" ref={gallery} aria-label={`Фото страви, ${urls.length}`}
+                onScroll={e => { const el = e.currentTarget; const i = Math.round(el.scrollLeft / el.clientWidth); if (i !== photoIdx) { setPhotoIdx(i); setAskDelPhoto(false) } }}>
+                {urls.map((u, i) => <img key={u} src={u} alt={`Фото ${i + 1} з ${urls.length}`} />)}
+              </div>
+            : <div style={{ transform: 'scale(2.3)' }}><IcPlate c={ink} /></div>}
           <button className="back" aria-label="Назад до каталогу" onClick={goBack}><IcBack /></button>
+          {urls.length > 1 && (
+            <span aria-hidden="true" style={{ position: 'absolute', left: 16, bottom: 16, height: 32, padding: '0 12px', borderRadius: '16px 16px 16px 4px', background: 'rgba(31,42,92,.72)', color: '#fff', fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center' }}>
+              {cur + 1} / {urls.length}{cur === 0 && ' · обкладинка'}
+            </span>
+          )}
           <div style={{ position: 'absolute', right: 16, bottom: 16, display: 'flex', gap: 8 }}>
-            {url && (askDelPhoto
-              ? <button onClick={delPhoto} style={{ height: 44, border: 0, borderRadius: '16px 4px 16px 16px', background: 'var(--warn)', color: '#fff', fontSize: 13.5, fontWeight: 600, padding: '0 14px' }}>Видалити фото?</button>
-              : <button aria-label="Видалити фото" onClick={() => setAskDelPhoto(true)} style={{ width: 44, height: 44, border: 0, borderRadius: '16px 4px 16px 16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IcTrash /></button>)}
-            <label className="photo" style={{ position: 'static' }}><IcCamera />{url ? 'Змінити' : 'Фото'}<input type="file" accept="image/*" hidden onChange={e => { addPhoto(e.target.files?.[0]); e.target.value = '' }} /></label>
+            {urls.length > 1 && cur > 0 && !askDelPhoto && (
+              <button aria-label="Зробити це фото обкладинкою" onClick={makeCover} style={{ width: 44, height: 44, border: 0, borderRadius: '16px 16px 4px 16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IcStar /></button>
+            )}
+            {urls.length > 0 && (askDelPhoto
+              ? <button onClick={delPhoto} style={{ height: 44, border: 0, borderRadius: '16px 4px 16px 16px', background: 'var(--warn)', color: '#fff', fontSize: 13.5, fontWeight: 600, padding: '0 14px' }}>Видалити це фото?</button>
+              : <button aria-label={`Видалити фото ${cur + 1}`} onClick={() => setAskDelPhoto(true)} style={{ width: 44, height: 44, border: 0, borderRadius: '16px 4px 16px 16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IcTrash /></button>)}
+            {!askDelPhoto && <label className="photo" style={{ position: 'static' }} aria-label="Додати фото"><IcCamera />{urls.length ? '+ Фото' : 'Фото'}<input type="file" accept="image/*" multiple hidden onChange={e => { addPhotos(e.target.files); e.target.value = '' }} /></label>}
           </div>
         </div>
 

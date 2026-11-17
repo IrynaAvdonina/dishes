@@ -45,6 +45,13 @@ class AppDB extends Dexie {
       })
       await tx.table('pantry').filter((p: PantryItem) => isBase(p.name)).delete()
     })
+    // одноразово: одне фото (photo) → список фото (photos)
+    this.version(5).upgrade(async tx => {
+      await tx.table('dishes').toCollection().modify((d: Dish & { photo?: Blob }) => {
+        if (d.photo) d.photos = [d.photo]
+        delete d.photo
+      })
+    })
   }
 }
 

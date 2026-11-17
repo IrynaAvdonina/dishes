@@ -26,7 +26,8 @@ export interface Dish {
   timeMin: number
   oven: boolean
   tags: string[]
-  photo?: Blob
+  /** фото страви; перше — обкладинка (у каталозі й угорі сторінки) */
+  photos?: Blob[]
   ingredients: Ingredient[]
   variants: Variant[]
   /** id страв, що добре пасують */

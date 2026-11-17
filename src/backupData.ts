@@ -9,7 +9,7 @@ import type { Dish, Ingredient, PantryItem, Role, Variant } from './types'
 const APP = 'stravy'
 const VERSION = 1
 
-interface FileDish extends Omit<Dish, 'photo'> { photo?: string }
+interface FileDish extends Omit<Dish, 'photos'> { photos?: string[] }
 interface BackupFile { app: string; version: number; exportedAt: string; dishes: FileDish[]; pantry: PantryItem[]; tastes?: string[] }
 
 export interface ParsedBackup { exportedAt: Date | null; dishes: Dish[]; pantry: PantryItem[]; tastes?: string[] }
@@ -25,7 +25,7 @@ export async function exportFile(): Promise<{ file: File; dishes: number }> {
   const [dishes, pantry] = await Promise.all([db.dishes.toArray(), db.pantry.toArray()])
   const out: BackupFile = {
     app: APP, version: VERSION, exportedAt: new Date().toISOString(),
-    dishes: await Promise.all(dishes.map(async d => ({ ...d, photo: d.photo ? await blobToDataUrl(d.photo) : undefined }))),
+    dishes: await Promise.all(dishes.map(async d => ({ ...d, photos: d.photos?.length ? await Promise.all(d.photos.map(blobToDataUrl)) : undefined }))),
     pantry,
     tastes: await getTastes()
   }
@@ -94,9 +94,11 @@ async function dish(v: unknown, n: number): Promise<Dish> {
   const rate = (x: unknown) => typeof x === 'number' && Number.isInteger(x) && x >= 1 && x <= 5 ? x : undefined
   if (rate(d.effort)) out.effort = rate(d.effort)
   if (rate(d.love)) out.love = rate(d.love)
-  if (isStr(d.photo) && d.photo.startsWith('data:image/')) {
-    try { out.photo = await (await fetch(d.photo)).blob() } catch { /* фото пропускаємо */ }
-  }
+  // фото: список (photos) або одне фото зі старих копій (photo)
+  const srcs = [...strArr(d.photos), ...(isStr(d.photo) ? [d.photo] : [])].filter(p => p.startsWith('data:image/'))
+  const photos: Blob[] = []
+  for (const p of srcs) { try { photos.push(await (await fetch(p)).blob()) } catch { /* битe фото пропускаємо */ } }
+  if (photos.length) out.photos = photos
   return out
 }
 
