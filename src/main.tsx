@@ -7,6 +7,7 @@ import DishPage from './DishPage'
 import DishForm from './DishForm'
 import Pantry from './Pantry'
 import Search from './Search'
+import Pairs from './Pairs'
 // шрифти лежать у самому застосунку, щоб працювали без інтернету
 import '@fontsource/onest/400.css'
 import '@fontsource/onest/500.css'
@@ -20,6 +21,7 @@ const router = createHashRouter([
   { path: '/new', element: <DishForm /> },
   { path: '/pantry', element: <Pantry /> },
   { path: '/search', element: <Search /> },
+  { path: '/pairs', element: <Pairs /> },
   { path: '/dish/:id', element: <DishPage /> },
   { path: '/dish/:id/edit', element: <DishForm /> }
 ])

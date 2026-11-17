@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { ROLE_LABEL, type Ingredient } from './types'
+import { ROLE_LABEL, type Dish, type Ingredient } from './types'
 import { missing, norm, pantrySet } from './logic'
-import { tintOf, usePhotoUrl } from './Thumb'
+import { MiniThumb, tintOf, usePhotoUrl } from './Thumb'
+import DishPicker from './DishPicker'
+import { addPair, partnerRole, removePair } from './pairsData'
 import { compressPhoto } from './photo'
 import { canGoBack } from './ui'
-import { IcBack, IcCamera, IcEyeOff, IcOven, IcPlate, IcSwap, RoleGlyph } from './icons'
+import { IcBack, IcCamera, IcClose, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
 
 const ROLE_BG = { side: '#F6D96B', protein: '#F5A97F', full: '#9FB1EE' }
 const TAGC: [string, string][] = [['#E3F1E4', '#2F6B3A'], ['#F6E4F0', '#8A3C74'], ['#E8F3F6', '#2D6577'], ['#FDF4CF', '#8A6B00'], ['#FDE6D8', '#9A4A1C']]
@@ -24,6 +26,8 @@ export default function DishPage() {
   const [variantId, setVariantId] = useState<string | null>(params.get('v'))
   const [open, setOpen] = useState<string | null>(null)
   const [chosen, setChosen] = useState<Record<string, string | null>>({})
+  const [picking, setPicking] = useState(false)
+  const all = useLiveQuery(() => db.dishes.toArray(), [])
   const url = usePhotoUrl(dish?.photo)
   // якщо сторінку відкрито напряму (без історії), «назад» веде в каталог, а не з застосунку
   const goBack = () => canGoBack() ? nav(-1) : nav('/', { replace: true })
@@ -48,6 +52,11 @@ export default function DishPage() {
   const rows = ings.filter(g => { if (!g.group) return true; if (shownGroups.has(g.group)) return false; shownGroups.add(g.group); return true })
   const lackLeft = rows.filter(g => isLack(g) && !chosen[key(g)])
   const [bg, ink] = tintOf(dish.id!)
+  // пари: лише гарнір ↔ білок
+  const pRole = partnerRole(dish.role)
+  const partners = (all ?? []).filter(d => dish.pairs.includes(d.id!) && pRole === d.role)
+  const candidates = (all ?? []).filter(d => d.role === pRole && (!d.hiddenAt || dish.pairs.includes(d.id!)))
+  const togglePair = (d: Dish) => dish.pairs.includes(d.id!) ? removePair(dish.id!, d.id!) : addPair(dish.id!, d.id!)
 
   const addPhoto = async (f?: File | null) => { if (f) await db.dishes.update(dish.id!, { photo: await compressPhoto(f) }) }
 
@@ -129,9 +138,30 @@ export default function DishPage() {
               </div>
             )
           })}
+
+          {pRole && (<>
+            <h2 className="u" style={{ margin: '26px 0 0', fontSize: 17, color: 'var(--cobalt)' }}>Пасує до</h2>
+            <div className="scallop" style={{ marginTop: 8 }} />
+            {partners.length === 0 && <div className="hint" style={{ marginTop: 10 }}>{pRole === 'protein' ? 'Додайте білок' : 'Додайте гарнір'}, з яким ця страва добре поєднується.</div>}
+            {partners.map(p => (
+              <div key={p.id} className="irow" style={{ minHeight: 68, borderBottom: '1px solid var(--line)', gap: 12 }}>
+                <MiniThumb dish={p} size={52} />
+                <Link to={`/dish/${p.id}`} style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 600, padding: '12px 0' }}>{p.name}{p.hiddenAt && <span style={{ fontSize: 12.5, color: 'var(--mute)', fontWeight: 500 }}> · прихована</span>}</Link>
+                <button className="iconbtn" aria-label={`Прибрати пару: ${p.name}`} onClick={() => removePair(dish.id!, p.id!)}><IcClose /></button>
+              </div>
+            ))}
+            <button className="dashed" style={{ marginTop: 12, height: 48, fontSize: 14.5 }} onClick={() => setPicking(true)}>
+              <IcPlus c="#3149B8" s={18} />{pRole === 'protein' ? 'Додати білок до пари' : 'Додати гарнір до пари'}
+            </button>
+          </>)}
           <div style={{ height: 120 }} />
         </div>
       </div>
+
+      {picking && pRole && (
+        <DishPicker title={pRole === 'protein' ? 'Білок до пари' : 'Гарнір до пари'} hint={`Позначте, що пасує до «${dish.name}».`}
+          dishes={candidates} selected={new Set(dish.pairs)} onPick={togglePair} onClose={() => setPicking(false)} />
+      )}
 
       <div className="bottombar">
         <button aria-label="Приховати страву" onClick={async () => { await db.dishes.update(dish.id!, { hiddenAt: Date.now() }); goBack() }}

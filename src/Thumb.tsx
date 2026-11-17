@@ -18,6 +18,15 @@ export function usePhotoUrl(photo?: Blob) {
   return url
 }
 
+/** Зменшена мініатюра (для списків пар і вибору страви). */
+export function MiniThumb({ dish, size = 56 }: { dish: Dish; size?: number }) {
+  return (
+    <div style={{ flex: 'none', width: size, height: size }}>
+      <div style={{ transform: `scale(${size / 84})`, transformOrigin: 'top left', width: 84, height: 84 }}><Thumb dish={dish} /></div>
+    </div>
+  )
+}
+
 export default function Thumb({ dish }: { dish: Dish }) {
   const id = dish.id ?? 0
   const [bg, ink] = tintOf(id)

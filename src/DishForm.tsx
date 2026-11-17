@@ -4,6 +4,7 @@ import { db } from './db'
 import { ROLE_LABEL, TASTES } from './types'
 import { draftSignature, emptyDraft, emptyItem, fromDraft, newKey, toDraft, validate, type Draft, type Errors, type ItemDraft } from './draft'
 import { compressPhoto } from './photo'
+import { prunePairs } from './pairsData'
 import { shapeOf, tintOf, usePhotoUrl } from './Thumb'
 import { ROLES, canGoBack, pillStyle } from './ui'
 import { IcBack, IcCamera, IcCheck, IcClose, IcPlate, IcPlus, IcTrash, RoleGlyph } from './icons'
@@ -134,6 +135,7 @@ export default function DishForm() {
     const fields = fromDraft(draft)
     if (id) {
       await db.dishes.update(id, fields)
+      await prunePairs(id) // якщо змінилась роль, пари «гарнір + білок» могли стати недійсними
       leave(goBack)
     } else {
       const last = await db.dishes.orderBy('order').last()
