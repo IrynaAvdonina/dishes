@@ -1,4 +1,4 @@
-import type { Dish, Ingredient } from './types'
+import type { Dish, Ingredient, Variant } from './types'
 
 /** Збережені налаштування можуть бути старішої форми: доповнюємо типовими. */
 export function mergeFilters(saved: Partial<Filters> | null | undefined): Filters {
@@ -119,4 +119,62 @@ export function requiredNames(ings: Ingredient[]): string {
     out.push(g.group ? ings.filter(x => x.group === g.group).map(x => x.name).join('/') : g.name)
   }
   return out.join(', ')
+}
+
+// ── пошук за наявними продуктами ────────────────────────────────────
+
+export interface Coverage {
+  /** чого немає навіть із замінами */
+  missing: string[]
+  /** що закривається заміною з «Моїх продуктів» */
+  subs: { name: string; sub: string }[]
+}
+
+/**
+ * Що з обов'язкових інгредієнтів є вдома, що можна замінити, а чого немає.
+ * Група «або»: достатньо одного; заміною може стати заміна будь-кого з групи.
+ */
+export function coverage(ings: Ingredient[], pantry: Set<string>): Coverage {
+  const missing: string[] = []
+  const subs: Coverage['subs'] = []
+  const has = (n: string) => pantry.has(norm(n))
+  const units = new Map<string, Ingredient[]>()
+  for (const g of ings) {
+    if (!g.required) continue
+    const k = g.group ? `g:${g.group}` : `n:${norm(g.name)}`
+    units.set(k, [...(units.get(k) ?? []), g])
+  }
+  for (const members of units.values()) {
+    if (members.some(m => has(m.name))) continue
+    const label = [...new Set(members.map(m => m.name))].join(' або ')
+    const sub = members.flatMap(m => m.replacements ?? []).find(has)
+    if (sub) subs.push({ name: label, sub })
+    else missing.push(label)
+  }
+  return { missing, subs }
+}
+
+export const dishIngredients = (d: Dish, v?: Variant) => [...d.ingredients, ...(v?.addIngredients ?? [])]
+
+export interface Match { dish: Dish; variant?: Variant; cov: Coverage }
+
+/**
+ * Найкращий варіант страви за продуктами вдома (найменше бракує, потім найменше замін).
+ * want — продукти, які обов'язково мають бути в страві; якщо жоден варіант їх не містить — null.
+ */
+export function bestMatch(d: Dish, pantry: Set<string>, want: string[] = []): Match | null {
+  const options: (Variant | undefined)[] = d.variants.length ? d.variants : [undefined]
+  let best: Match | null = null
+  for (const v of options) {
+    const ings = dishIngredients(d, v)
+    if (want.length) {
+      const names = new Set(ings.map(i => norm(i.name)))
+      if (!want.every(w => names.has(norm(w)))) continue
+    }
+    const cov = coverage(ings, pantry)
+    if (!best || cov.missing.length < best.cov.missing.length
+      || (cov.missing.length === best.cov.missing.length && cov.subs.length < best.cov.subs.length))
+      best = { dish: d, variant: v, cov }
+  }
+  return best
 }

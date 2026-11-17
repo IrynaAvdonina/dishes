@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { ROLE_LABEL, type Ingredient } from './types'
-import { missing, pantrySet } from './logic'
+import { missing, norm, pantrySet } from './logic'
 import { tintOf, usePhotoUrl } from './Thumb'
 import { compressPhoto } from './photo'
 import { canGoBack } from './ui'
@@ -19,7 +19,9 @@ export default function DishPage() {
   const dish = useLiveQuery(async () => (await db.dishes.get(id)) ?? null, [id])
   const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
   const pantry = useMemo(() => pantrySet(pantryRows), [pantryRows])
-  const [variantId, setVariantId] = useState<string | null>(null)
+  // ?v=… — варіант, з яким страву відкрили (напр. з пошуку)
+  const [params] = useSearchParams()
+  const [variantId, setVariantId] = useState<string | null>(params.get('v'))
   const [open, setOpen] = useState<string | null>(null)
   const [chosen, setChosen] = useState<Record<string, string | null>>({})
   const url = usePhotoUrl(dish?.photo)
@@ -115,10 +117,12 @@ export default function DishPage() {
                 )}
                 {open === k && (
                   <div style={{ margin: '2px 0 6px 26px', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {subs.map(s => {
+                    {[...subs].sort((a, b) => Number(pantry.has(norm(b))) - Number(pantry.has(norm(a)))).map(s => {
                       const on = pick === s
-                      return <button key={s} aria-pressed={on} onClick={() => { setChosen({ ...chosen, [k]: on ? null : s }); setOpen(null) }}
-                        style={{ height: 44, padding: '0 16px', fontSize: 14, fontWeight: 600, borderRadius: '22px 22px 4px 22px', border: on ? 0 : '1.5px dashed #B7C3EE', background: on ? '#3149B8' : '#fff', color: on ? '#fff' : '#3149B8' }}>{s}</button>
+                      const home = pantry.has(norm(s))
+                      return <button key={s} aria-pressed={on} aria-label={`${s}${home ? ', є вдома' : ''}`} onClick={() => { setChosen({ ...chosen, [k]: on ? null : s }); setOpen(null) }}
+                        style={{ height: 44, padding: '0 16px', fontSize: 14, fontWeight: 600, borderRadius: '22px 22px 4px 22px', border: on ? 0 : '1.5px dashed #B7C3EE', background: on ? '#3149B8' : '#fff', color: on ? '#fff' : '#3149B8', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        {s}{home && <span style={{ fontSize: 12, fontWeight: 600, color: on ? '#fff' : '#2F6B3A' }}>· є</span>}</button>
                     })}
                   </div>
                 )}

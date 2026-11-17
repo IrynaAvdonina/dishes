@@ -6,7 +6,7 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy, s
 import { CSS } from '@dnd-kit/utilities'
 import { db } from './db'
 import { ROLE_LABEL, TASTES, type Dish, type Role } from './types'
-import { activeFilterCount, ingredientCount, matchesSearch, mergeFilters, missing, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
+import { activeFilterCount, coverage, ingredientCount, matchesSearch, mergeFilters, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
@@ -25,7 +25,8 @@ function load<T>(k: string, d: T): T {
 }
 
 function RowBody({ d, pantry, sortKey }: { d: Dish; pantry: Set<string>; sortKey: SortKey }) {
-  const lack = missing(d.ingredients, pantry)
+  // «немає» — лише те, чого немає і заміною з продуктів вдома не закрити
+  const lack = coverage(d.ingredients, pantry).missing
   return (
     <>
       <Thumb dish={d} />
