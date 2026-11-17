@@ -93,7 +93,9 @@ nav.tabs a.on .ti{background:var(--soft)}
 .pbtn{height:44px;border:1.5px solid #B7C3EE;border-radius:16px 16px 4px 16px;background:#fff;color:var(--cobalt);font-size:14px;font-weight:600;padding:0 14px;display:inline-flex;align-items:center;gap:8px;cursor:pointer}
 /* повідомлення з «Повернути» */
 .toast{position:absolute;left:20px;right:20px;bottom:calc(84px + env(safe-area-inset-bottom));min-height:52px;display:flex;align-items:center;gap:10px;padding:4px 8px 4px 16px;border-radius:18px 18px 4px 18px;background:var(--ink);color:#fff;font-size:14px;z-index:10}
-/* панель над каталогом, що згортається при прокрутці */
-.collapse{flex:none;display:grid;grid-template-rows:1fr;transition:grid-template-rows .22s ease}
+/* панель над каталогом, що згортається кнопкою в заголовку */
+.collapse{flex:none;display:grid;grid-template-rows:1fr;transition:grid-template-rows .25s ease}
 .collapse.shut{grid-template-rows:0fr}
-.collapse>div{min-height:0;overflow:hidden}
+.collapse>div{min-height:0;overflow:hidden;transition:opacity .2s ease}
+.collapse.shut>div{opacity:0}
+@media (prefers-reduced-motion:reduce){.collapse,.collapse>div{transition:none}}

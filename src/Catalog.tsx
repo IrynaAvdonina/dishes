@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { DndContext, PointerSensor, TouchSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -11,7 +11,7 @@ import Thumb from './Thumb'
 import { RatingView } from './Rating'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
-import { IcBackup, IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
+import { IcBackup, IcChevron, IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
 import BackupSheet from './Backup'
 
 const SORTS: { k: SortKey; label: string; short: string; hint: string; a: string; b: string }[] = [
@@ -76,21 +76,9 @@ export default function Catalog() {
   const [sheet, setSheet] = useState<'sort' | 'filters' | 'backup' | null>(null)
   const [reorder, setReorder] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
-  // пошук, пілюлі й рядок «N страв · сортування» ховаються при прокрутці вниз і повертаються при прокрутці вгору
-  const [shut, setShut] = useState(false)
-  const lastTop = useRef(0)
-  const quietUntil = useRef(0)
-  const onListScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const el = e.currentTarget, top = el.scrollTop, dy = top - lastTop.current
-    lastTop.current = top
-    if (performance.now() < quietUntil.current) return // поки панель згортається, висота списку змінюється
-    const typing = document.activeElement?.getAttribute('aria-label') === 'Пошук страви'
-    let next = shut
-    if (top < 24) next = false
-    else if (dy > 6 && !typing && el.scrollHeight - el.clientHeight > 200) next = true
-    else if (dy < -6) next = false
-    if (next !== shut) { setShut(next); quietUntil.current = performance.now() + 300 }
-  }
+  // пошук, пілюлі й рядок «N страв · сортування» можна сховати кнопкою в заголовку (стан запам'ятовується)
+  const [shut, setShutS] = useState<boolean>(() => load('panelShut', false))
+  const setShut = (v: boolean) => { setShutS(v); save('panelShut', v) }
   // новий порядок після перетягування, поки база ще зберігає (щоб рядок не «стрибав» назад)
   const [pendingOrder, setPendingOrder] = useState<Map<number, number> | null>(null)
   useEffect(() => setPendingOrder(null), [all])
@@ -115,6 +103,8 @@ export default function Catalog() {
     sortKey, dir)
   const cur = SORTS.find(s => s.k === sortKey)!
   const fcount = activeFilterCount(filters)
+  // чи щось вибрано в схованій панелі (щоб показати крапку на кнопці)
+  const panelBusy = !!needle || fcount > 0 || !(filters.roles.side && filters.roles.protein && filters.roles.full)
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return
@@ -139,13 +129,20 @@ export default function Catalog() {
       <header className="top">
         <h1 className="u">Страви</h1>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--mute)' }}>
-          {all.length} у каталозі
+          {all.length} стр.
           <button className="iconbtn" aria-label="Резервна копія: зберегти або відновити дані" onClick={() => setSheet('backup')}><IcBackup /></button>
+          {!reorder && (
+            <button className="iconbtn" style={{ position: 'relative', borderRadius: '14px 4px 14px 14px' }} aria-expanded={!shut}
+              aria-label={shut ? `Показати пошук і фільтри${panelBusy ? ' (є вибрані)' : ''}` : 'Сховати пошук і фільтри'} onClick={() => setShut(!shut)}>
+              <IcChevron up={!shut} />
+              {shut && panelBusy && <span aria-hidden="true" style={{ position: 'absolute', right: 6, top: 6, width: 9, height: 9, borderRadius: '50%', background: '#F5A97F', border: '2px solid #EEF1FB' }} />}
+            </button>
+          )}
         </span>
       </header>
       <div className="scallop" />
 
-      <div className={'collapse' + (shut && !reorder ? ' shut' : '')}><div>
+      <div className={'collapse' + (shut && !reorder ? ' shut' : '')}><div inert={shut && !reorder}>
       <div className="row1">
         <div className="search">
           <IcSearch />
@@ -181,7 +178,7 @@ export default function Catalog() {
       <div className="meta">{visible.length} {plural(visible.length, 'страва', 'страви', 'страв')} · {cur.label}</div>
       </div></div>
 
-      <div className="scroll list" onScroll={onListScroll}>
+      <div className="scroll list">
         {reorder ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={visible.map(d => d.id!)} strategy={verticalListSortingStrategy}>
