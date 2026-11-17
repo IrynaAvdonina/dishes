@@ -193,3 +193,28 @@ export function bestMatch(d: Dish, pantry: Set<string>, want: string[] = []): Ma
   }
   return best
 }
+
+// ── однакові назви інгредієнтів ─────────────────────────────────────
+
+/** Усі назви продуктів зі страв (разом із замінами) і «Моїх продуктів», без повторів. */
+export function knownNames(dishes: Dish[], pantry: { name: string }[] = []): string[] {
+  const m = new Map<string, string>()
+  const add = (n: string) => { const k = norm(n); if (k && !m.has(k) && !isStaple(n)) m.set(k, n.trim()) }
+  for (const d of dishes) for (const g of [...d.ingredients, ...d.variants.flatMap(v => v.addIngredients ?? [])]) {
+    add(g.name)
+    for (const r of g.replacements ?? []) add(r)
+  }
+  for (const p of pantry) add(p.name)
+  return [...m.values()].sort((a, b) => a.localeCompare(b, 'uk'))
+}
+
+/**
+ * Схожі вже відомі назви, якщо введена назва нова: «яйце» → «яйця», «помідор» → «помідори».
+ * Порівнюємо початок слова без закінчення.
+ */
+export function similarNames(value: string, known: string[]): string[] {
+  const v = norm(value)
+  if (v.length < 3 || known.some(k => norm(k) === v)) return []
+  const stem = v.slice(0, Math.max(3, v.length - 2))
+  return known.filter(k => { const n = norm(k); return n !== v && (n.startsWith(stem) || v.startsWith(n.slice(0, Math.max(3, n.length - 2)))) }).slice(0, 3)
+}

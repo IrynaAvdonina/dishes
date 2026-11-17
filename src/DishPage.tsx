@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
@@ -10,7 +10,7 @@ import { addPair, partnerRole, removePair } from './pairsData'
 import { compressPhoto } from './photo'
 import { RATE, RatingView } from './Rating'
 import { canGoBack } from './ui'
-import { IcBack, IcCamera, IcCheck, IcClose, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
+import { IcBack, IcCamera, IcCheck, IcClose, IcTrash, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
 
 const ROLE_BG = { side: '#F6D96B', protein: '#F5A97F', full: '#9FB1EE' }
 const TAGC: [string, string][] = [['#E3F1E4', '#2F6B3A'], ['#F6E4F0', '#8A3C74'], ['#E8F3F6', '#2D6577'], ['#FDF4CF', '#8A6B00'], ['#FDE6D8', '#9A4A1C']]
@@ -28,6 +28,9 @@ export default function DishPage() {
   const [open, setOpen] = useState<string | null>(null)
   const [chosen, setChosen] = useState<Record<string, string | null>>({})
   const [picking, setPicking] = useState(false)
+  // видалення фото — у два натискання: «кошик» → «Видалити фото?»
+  const [askDelPhoto, setAskDelPhoto] = useState(false)
+  useEffect(() => { if (!askDelPhoto) return; const t = setTimeout(() => setAskDelPhoto(false), 4000); return () => clearTimeout(t) }, [askDelPhoto])
   const all = useLiveQuery(() => db.dishes.toArray(), [])
   const url = usePhotoUrl(dish?.photo)
   // якщо сторінку відкрито напряму (без історії), «назад» веде в каталог, а не з застосунку
@@ -68,6 +71,7 @@ export default function DishPage() {
   }
 
   const addPhoto = async (f?: File | null) => { if (f) await db.dishes.update(dish.id!, { photo: await compressPhoto(f) }) }
+  const delPhoto = async () => { await db.dishes.update(dish.id!, { photo: undefined }); setAskDelPhoto(false) }
 
   return (
     <div className="app">
@@ -75,7 +79,12 @@ export default function DishPage() {
         <div className="hero" style={{ background: bg, borderRadius: `0 0 48px 12px` }}>
           {url ? <img src={url} alt="" /> : <div style={{ transform: 'scale(2.3)' }}><IcPlate c={ink} /></div>}
           <button className="back" aria-label="Назад до каталогу" onClick={goBack}><IcBack /></button>
-          <label className="photo"><IcCamera />Фото<input type="file" accept="image/*" hidden onChange={e => { addPhoto(e.target.files?.[0]); e.target.value = '' }} /></label>
+          <div style={{ position: 'absolute', right: 16, bottom: 16, display: 'flex', gap: 8 }}>
+            {url && (askDelPhoto
+              ? <button onClick={delPhoto} style={{ height: 44, border: 0, borderRadius: '16px 4px 16px 16px', background: 'var(--warn)', color: '#fff', fontSize: 13.5, fontWeight: 600, padding: '0 14px' }}>Видалити фото?</button>
+              : <button aria-label="Видалити фото" onClick={() => setAskDelPhoto(true)} style={{ width: 44, height: 44, border: 0, borderRadius: '16px 4px 16px 16px', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><IcTrash /></button>)}
+            <label className="photo" style={{ position: 'static' }}><IcCamera />{url ? 'Змінити' : 'Фото'}<input type="file" accept="image/*" hidden onChange={e => { addPhoto(e.target.files?.[0]); e.target.value = '' }} /></label>
+          </div>
         </div>
 
         <div style={{ padding: '18px 20px 0' }}>

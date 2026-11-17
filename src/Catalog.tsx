@@ -5,9 +5,11 @@ import { DndContext, PointerSensor, TouchSensor, KeyboardSensor, closestCenter, 
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { db } from './db'
-import { ROLE_LABEL, TASTES, type Dish, type Role } from './types'
+import { ROLE_LABEL, type Dish, type Role } from './types'
+import { useTastes } from './tastesData'
 import { activeFilterCount, coverage, matchesSearch, mergeFilters, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
+import { useKeepScroll, useScreenState } from './keepScroll'
 import { RatingView } from './Rating'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
@@ -69,13 +71,15 @@ export default function Catalog() {
   const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
   const pantry = useMemo(() => pantrySet(pantryRows), [pantryRows])
 
-  const [q, setQ] = useState('')
+  // пошук і «Приховані» пам'ятаються, коли відкриваєш страву й повертаєшся
+  const [q, setQ] = useScreenState('catalog.q', '')
   const [filters, setFiltersS] = useState<Filters>(() => mergeFilters(load<Partial<Filters> | null>('filters', null)))
+  const tastes = useTastes()
   const [sortKey, setSortKeyS] = useState<SortKey>(() => load('sortKey', 'manual'))
   const [dir, setDirS] = useState<Dir>(() => load('dir', 'asc'))
   const [sheet, setSheet] = useState<'sort' | 'filters' | 'backup' | null>(null)
   const [reorder, setReorder] = useState(false)
-  const [showHidden, setShowHidden] = useState(false)
+  const [showHidden, setShowHidden] = useScreenState('catalog.hidden', false)
   // пошук, пілюлі й рядок «N страв · сортування» можна сховати кнопкою в заголовку (стан запам'ятовується)
   const [shut, setShutS] = useState<boolean>(() => load('panelShut', false))
   const setShut = (v: boolean) => { setShutS(v); save('panelShut', v) }
@@ -94,15 +98,18 @@ export default function Catalog() {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   )
 
+  const keep = useKeepScroll('catalog', !!all)
   if (!all) return null
   const hidden = all.filter(d => d.hiddenAt)
   const needle = norm(q)
+  // смаки, яких уже немає в списку (видалені у «Продуктах»), у фільтрі не враховуємо
+  const live = { ...filters, tags: filters.tags.filter(t => tastes.includes(t)) }
   const withPending = pendingOrder ? all.map(d => pendingOrder.has(d.id!) ? { ...d, order: pendingOrder.get(d.id!)! } : d) : all
   const visible = sortDishes(
-    withPending.filter(d => !d.hiddenAt && passes(d, filters) && matchesSearch(d, needle)),
+    withPending.filter(d => !d.hiddenAt && passes(d, live) && matchesSearch(d, needle)),
     sortKey, dir)
   const cur = SORTS.find(s => s.k === sortKey)!
-  const fcount = activeFilterCount(filters)
+  const fcount = activeFilterCount(live)
   // чи щось вибрано в схованій панелі (щоб показати крапку на кнопці)
   const panelBusy = !!needle || fcount > 0 || !(filters.roles.side && filters.roles.protein && filters.roles.full)
 
@@ -178,7 +185,7 @@ export default function Catalog() {
       <div className="meta">{visible.length} {plural(visible.length, 'страва', 'страви', 'страв')} · {cur.label}</div>
       </div></div>
 
-      <div className="scroll list">
+      <div className="scroll list" ref={keep.ref} onScroll={keep.onScroll}>
         {reorder ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={visible.map(d => d.id!)} strategy={verticalListSortingStrategy}>
@@ -270,7 +277,7 @@ export default function Catalog() {
             </div>
             <div className="lbl">Смак</div>
             <div className="pills">
-              {TASTES.map((t, i) => {
+              {tastes.map((t, i) => {
                 const on = filters.tags.includes(t)
                 return <button key={t} className="pill" aria-pressed={on} style={pillStyle(on, i)}
                   onClick={() => setFilters({ ...filters, tags: on ? filters.tags.filter(x => x !== t) : [...filters.tags, t] })}>{t}</button>

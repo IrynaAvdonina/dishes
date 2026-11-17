@@ -5,15 +5,74 @@ import { isStaple, norm, pantrySet, plural, suggestProducts } from './logic'
 import { pillStyle } from './ui'
 import Tabs from './Tabs'
 import { IcClose, IcPlus, IcSearch } from './icons'
+import { addTaste, removeTaste, renameTaste, restoreTaste, useTastes } from './tastesData'
+import type { Dish } from './types'
 
 const CHIP_R = ['22px 22px 4px 22px', '22px 4px 22px 22px', '4px 22px 22px 22px', '22px 22px 22px 4px']
+
+type Undo = { text: string; restore: () => Promise<void> }
+
+/** Смаки страв: додати, перейменувати, видалити (з можливістю повернути). */
+function TastesSection({ dishes, onUndo }: { dishes: Dish[]; onUndo: (u: Undo) => void }) {
+  const tastes = useTastes()
+  const [name, setName] = useState('')
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  const [err, setErr] = useState('')
+  const used = (t: string) => dishes.filter(d => d.tags.includes(t)).length
+
+  const add = async () => { if (await addTaste(name)) { setName(''); setErr('') } else if (name.trim()) setErr('Такий смак уже є') }
+  const save = async () => {
+    if (!editing) return
+    if (await renameTaste(editing, draft)) { setEditing(null); setErr('') } else setErr(draft.trim() ? 'Такий смак уже є' : 'Назва порожня')
+  }
+  const del = async (t: string) => {
+    const { index, dishIds } = await removeTaste(t)
+    setEditing(null)
+    onUndo({ text: `Смак «${t}» видалено${dishIds.length ? ` з ${dishIds.length} ${plural(dishIds.length, 'страви', 'страв', 'страв')}` : ''}`, restore: () => restoreTaste(t, index, dishIds) })
+  }
+
+  return (<>
+    <h2 className="u" style={{ margin: '28px 0 4px', fontSize: 17, color: 'var(--cobalt)' }}>Смаки</h2>
+    <div className="hint">Ярлики для страв і фільтра «Смак» у каталозі. Натисніть на смак, щоб перейменувати або видалити.</div>
+    <div className="pills" style={{ marginTop: 8 }}>
+      {tastes.map((t, i) => {
+        const n = used(t)
+        return (
+          <button key={t} aria-expanded={editing === t} aria-label={`Смак «${t}», у ${n} ${plural(n, 'страві', 'стравах', 'стравах')}. Змінити`}
+            onClick={() => { setEditing(editing === t ? null : t); setDraft(t); setErr('') }}
+            style={{ ...pillStyle(editing === t, i), height: 44, padding: '0 16px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {t}<span style={{ fontSize: 12, opacity: .7 }}>{n}</span>
+          </button>
+        )
+      })}
+    </div>
+    {editing && (
+      <div className="vcard" style={{ marginTop: 10 }}>
+        <form className="irow" onSubmit={e => { e.preventDefault(); save() }}>
+          <input className="inp" style={{ background: '#fff' }} value={draft} onChange={e => setDraft(e.target.value)} aria-label={`Нова назва смаку «${editing}»`} autoCapitalize="none" />
+          <button type="submit" className="primary" style={{ width: 'auto', height: 50, padding: '0 16px', fontSize: 14.5 }}>Зберегти</button>
+        </form>
+        <div className="irow" style={{ marginTop: 6, justifyContent: 'space-between' }}>
+          <button className="textbtn" style={{ color: 'var(--warn)' }} onClick={() => del(editing)}>Видалити{used(editing) ? ` (у ${used(editing)} ${plural(used(editing), 'страві', 'стравах', 'стравах')})` : ''}</button>
+          <button className="textbtn" style={{ color: 'var(--mute)' }} onClick={() => setEditing(null)}>Скасувати</button>
+        </div>
+      </div>
+    )}
+    <form className="irow" style={{ marginTop: 10 }} onSubmit={e => { e.preventDefault(); add() }}>
+      <input className="inp" value={name} onChange={e => { setName(e.target.value); setErr('') }} placeholder="Новий смак, напр. «гостре»" aria-label="Новий смак" autoCapitalize="none" enterKeyHint="done" />
+      <button type="submit" className="iconbtn" style={{ width: 50, height: 50, background: 'var(--cobalt)' }} aria-label="Додати смак"><IcPlus s={22} /></button>
+    </form>
+    {err && <div className="err">{err}</div>}
+  </>)
+}
 
 /** «Мої продукти»: що є вдома. Каталог за цим списком показує, чого бракує. */
 export default function Pantry() {
   const rows = useLiveQuery(() => db.pantry.toArray(), [])
   const dishes = useLiveQuery(() => db.dishes.toArray(), [])
   const [q, setQ] = useState('')
-  const [undo, setUndo] = useState<string | null>(null)
+  const [undo, setUndo] = useState<Undo | null>(null)
   const timer = useRef<number>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
 
@@ -36,14 +95,17 @@ export default function Pantry() {
     await db.pantry.put({ name: clean })
     setQ('')
   }
-  const remove = async (name: string) => {
-    await db.pantry.delete(name)
-    setUndo(name)
+  const showUndo = (u: Undo) => {
+    setUndo(u)
     window.clearTimeout(timer.current)
     timer.current = window.setTimeout(() => setUndo(null), 5000)
   }
+  const remove = async (name: string) => {
+    await db.pantry.delete(name)
+    showUndo({ text: `Прибрано: ${name}`, restore: async () => { await db.pantry.put({ name }) } })
+  }
   const restore = async () => {
-    if (undo) await db.pantry.put({ name: undo })
+    if (undo) await undo.restore()
     setUndo(null)
   }
 
@@ -103,12 +165,13 @@ export default function Pantry() {
             ))}
           </div>
         )}
+        {!needle && <TastesSection dishes={dishes} onUndo={showUndo} />}
         <div style={{ height: 90 }} />
       </div>
 
       {undo && (
         <div role="status" className="toast">
-          <span style={{ flex: 1, minWidth: 0 }}>Прибрано: <b>{undo}</b></span>
+          <span style={{ flex: 1, minWidth: 0 }}>{undo.text}</span>
           <button className="textbtn" style={{ color: '#fff', textDecoration: 'underline' }} onClick={restore}>Повернути</button>
         </div>
       )}

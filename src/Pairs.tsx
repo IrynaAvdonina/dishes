@@ -8,6 +8,7 @@ import { addPair, listPairs, removePair } from './pairsData'
 import { MiniThumb } from './Thumb'
 import DishPicker from './DishPicker'
 import Tabs from './Tabs'
+import { useKeepScroll } from './keepScroll'
 import { IcClose, IcPlus } from './icons'
 
 interface PairInfo { key: string; side: Dish; protein: Dish; ms: Match; mp: Match; missing: string[]; subs: string[] }
@@ -56,6 +57,7 @@ export default function Pairs() {
     }).sort((a, b) => a.missing.length - b.missing.length || a.subs.length - b.subs.length || ((b.side.love ?? 0) + (b.protein.love ?? 0)) - ((a.side.love ?? 0) + (a.protein.love ?? 0)) || a.side.order - b.side.order || a.protein.order - b.protein.order)
   }, [dishes, pantry])
 
+  const keep = useKeepScroll('pairs', !!dishes && !!pantryRows)
   if (!dishes || !pantryRows) return null
 
   const ready = pairs.filter(p => p.missing.length === 0)
@@ -91,7 +93,7 @@ export default function Pairs() {
       </header>
       <div className="scallop" />
 
-      <div className="scroll" style={{ padding: '0 20px' }}>
+      <div className="scroll" style={{ padding: '0 20px' }} ref={keep.ref} onScroll={keep.onScroll}>
         <div className="hint" style={{ marginTop: 12 }}>Гарнір + білок, які добре поєднуються. Стан рахується за вашими продуктами вдома.</div>
 
         <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>

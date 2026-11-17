@@ -1,7 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLiveQuery } from 'dexie-react-hooks'
 import { useBlocker, useNavigate, useParams } from 'react-router-dom'
 import { db } from './db'
-import { ROLE_LABEL, TASTES } from './types'
+import { ROLE_LABEL } from './types'
+import { useTastes } from './tastesData'
+import { knownNames, similarNames } from './logic'
 import { draftSignature, emptyDraft, emptyItem, fromDraft, newKey, toDraft, validate, type Draft, type Errors, type ItemDraft } from './draft'
 import { compressPhoto } from './photo'
 import { RatingInput } from './Rating'
@@ -29,21 +32,33 @@ function Confirm({ title, text, yes, no, danger, onYes, onNo }: {
 }
 
 /** Один інгредієнт (або група «або»). */
-function ItemEditor({ it, n, where = '', onChange, onRemove }: { it: ItemDraft; n: number; where?: string; onChange: (it: ItemDraft) => void; onRemove: () => void }) {
+function ItemEditor({ it, n, where = '', known, onChange, onRemove }: { it: ItemDraft; n: number; where?: string; known: string[]; onChange: (it: ItemDraft) => void; onRemove: () => void }) {
   const setName = (j: number, v: string) => onChange({ ...it, names: it.names.map((x, k) => k === j ? v : x) })
+  const [focused, setFocused] = useState<number | null>(null)
   const label = it.names[0] || `Інгредієнт ${n}`
   return (
     <div className="icard">
-      {it.names.map((name, j) => (
-        <div key={j} className="irow">
+      {it.names.map((name, j) => {
+        // підказка, якщо такий продукт уже записаний трохи інакше (щоб не було «яйце» і «яйця»)
+        const alike = focused === j ? [] : similarNames(name, known)
+        return (<div key={j}>
+        <div className="irow">
           {j > 0 && <span className="or">або</span>}
-          <input className="inp" value={name} onChange={e => setName(j, e.target.value)} autoCapitalize="none"
+          <input className="inp" value={name} onChange={e => setName(j, e.target.value)} autoCapitalize="none" list="ing-names"
+            onFocus={() => setFocused(j)} onBlur={() => setFocused(null)}
             placeholder={j ? 'інший інгредієнт' : 'Інгредієнт'} aria-label={j ? `Альтернатива ${j} до «${it.names[0]}»` : `Назва інгредієнта ${n}${where}`} />
           {j === 0
             ? <button className="iconbtn" aria-label={`Прибрати інгредієнт: ${label}`} onClick={onRemove}><IcClose /></button>
             : <button className="iconbtn" aria-label={`Прибрати альтернативу: ${name || j}`} onClick={() => onChange({ ...it, names: it.names.filter((_, k) => k !== j) })}><IcClose /></button>}
         </div>
-      ))}
+        {alike.length > 0 && (
+          <div className="irow" style={{ flexWrap: 'wrap', gap: 4, margin: '2px 0 0 4px', fontSize: 13, color: 'var(--mute)' }}>
+            <span>Вже є схожий:</span>
+            {alike.map(a => <button key={a} className="textbtn" style={{ textDecoration: 'underline' }} onClick={() => setName(j, a)} aria-label={`Замінити «${name}» на «${a}»`}>{a}</button>)}
+          </div>
+        )}
+        </div>)
+      })}
       <div className="pills" style={{ alignItems: 'center' }}>
         {([[true, 'Обов’язковий'], [false, 'За бажанням']] as const).map(([v, l], i) =>
           <button key={l} className="small" aria-pressed={it.required === v} style={pillStyle(it.required === v, i)} onClick={() => onChange({ ...it, required: v })}>{l}</button>)}
@@ -58,11 +73,11 @@ function ItemEditor({ it, n, where = '', onChange, onRemove }: { it: ItemDraft; 
   )
 }
 
-function ItemsList({ items, onChange, addLabel, where }: { items: ItemDraft[]; onChange: (items: ItemDraft[]) => void; addLabel: string; where?: string }) {
+function ItemsList({ items, onChange, addLabel, where, known }: { items: ItemDraft[]; onChange: (items: ItemDraft[]) => void; addLabel: string; where?: string; known: string[] }) {
   return (
     <>
       {items.map((it, i) => (
-        <ItemEditor key={it.key} it={it} n={i + 1} where={where}
+        <ItemEditor key={it.key} it={it} n={i + 1} where={where} known={known}
           onChange={v => onChange(items.map(x => x.key === it.key ? v : x))}
           onRemove={() => onChange(items.filter(x => x.key !== it.key))} />
       ))}
@@ -76,6 +91,11 @@ export default function DishForm() {
   const params = useParams()
   const id = params.id ? Number(params.id) : null
   const nav = useNavigate()
+  const tastes = useTastes()
+  // відомі назви продуктів: для підказок при введенні інгредієнтів
+  const allDishes = useLiveQuery(() => db.dishes.toArray(), [])
+  const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
+  const known = useMemo(() => knownNames(allDishes ?? [], pantryRows ?? []), [allDishes, pantryRows])
 
   const [status, setStatus] = useState<'loading' | 'missing' | 'ready'>(id ? 'loading' : 'ready')
   const [draft, setDraft] = useState<Draft>(emptyDraft)
@@ -173,6 +193,8 @@ export default function DishForm() {
       </header>
       <div className="scallop" />
 
+      {/* підказки назв у полях інгредієнтів */}
+      <datalist id="ing-names">{known.map(n => <option key={n} value={n} />)}</datalist>
       <div className="scroll">
         <div className="form">
           {/* Фото */}
@@ -232,8 +254,9 @@ export default function DishForm() {
 
           {/* Смак */}
           <h2 className="u">Смак</h2>
+          <div className="hint">Список смаків змінюється у вкладці «Продукти».</div>
           <div className="pills" style={{ marginTop: 8 }}>
-            {TASTES.map((t, i) => {
+            {[...tastes, ...draft.tags.filter(t => !tastes.includes(t))].map((t, i) => {
               const on = draft.tags.includes(t)
               return <button key={t} className="pill" aria-pressed={on} style={pillStyle(on, i)}
                 onClick={() => toggleTag(t)}>{t}</button>
@@ -243,7 +266,7 @@ export default function DishForm() {
           {/* Інгредієнти */}
           <h2 className="u">Інгредієнти</h2>
           <div className="hint">«+ або» — коли підходить будь-який із кількох (кріп або петрушка). Заміни показуються, якщо продукту немає.</div>
-          <ItemsList items={draft.items} onChange={v => set('items', v)} addLabel="Додати інгредієнт" />
+          <ItemsList known={known} items={draft.items} onChange={v => set('items', v)} addLabel="Додати інгредієнт" />
 
           {/* Варіанти */}
           <h2 className="u">Варіанти</h2>
@@ -257,7 +280,7 @@ export default function DishForm() {
                   onClick={() => set('variants', draft.variants.filter(x => x.key !== v.key))}><IcClose /></button>
               </div>
               {v.items.length > 0 && <div className="lbl" style={{ margin: '10px 0 0' }}>Додатково для цього варіанта</div>}
-              <ItemsList items={v.items} addLabel="Інгредієнт для варіанта" where={` (варіант ${vi + 1})`}
+              <ItemsList known={known} items={v.items} addLabel="Інгредієнт для варіанта" where={` (варіант ${vi + 1})`}
                 onChange={items => set('variants', draft.variants.map(x => x.key === v.key ? { ...x, items } : x))} />
             </div>
           ))}

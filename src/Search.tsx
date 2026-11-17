@@ -5,6 +5,7 @@ import { db } from './db'
 import { ROLE_LABEL, type Role } from './types'
 import { bestMatch, norm, pantrySet, plural, type Match } from './logic'
 import Thumb from './Thumb'
+import { useKeepScroll, useScreenState } from './keepScroll'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
 import { IcCheck } from './icons'
@@ -35,9 +36,10 @@ export default function Search() {
   const dishes = useLiveQuery(() => db.dishes.toArray(), [])
   const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
   const pantry = useMemo(() => pantrySet(pantryRows), [pantryRows])
-  const [roles, setRoles] = useState<Record<Role, boolean>>({ side: true, protein: true, full: true })
-  const [want, setWant] = useState<string[]>([])
-  const [showRest, setShowRest] = useState(false)
+  // вибір пам'ятається, коли відкриваєш страву й повертаєшся
+  const [roles, setRoles] = useScreenState<Record<Role, boolean>>('search.roles', { side: true, protein: true, full: true })
+  const [want, setWant] = useScreenState<string[]>('search.want', [])
+  const [showRest, setShowRest] = useScreenState('search.rest', false)
 
   // продукти вдома, які трапляються у стравах — для «Хочу використати»
   const usable = useMemo(() => {
@@ -50,6 +52,7 @@ export default function Search() {
     return [...count.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'uk')).map(([n]) => n)
   }, [dishes, pantry])
 
+  const keep = useKeepScroll('search', !!dishes && !!pantryRows)
   if (!dishes || !pantryRows) return null
 
   const wantNow = want.filter(w => usable.includes(w))
@@ -82,7 +85,7 @@ export default function Search() {
       </header>
       <div className="scallop" />
 
-      <div className="scroll">
+      <div className="scroll" ref={keep.ref} onScroll={keep.onScroll}>
         <div style={{ padding: '12px 20px 0' }}>
           <div className="hint" style={{ margin: 0 }}>
             За вашими продуктами: <Link to="/pantry" style={{ color: 'var(--cobalt)', fontWeight: 600, textDecoration: 'underline' }}>{pantryRows.length} {plural(pantryRows.length, 'продукт', 'продукти', 'продуктів')} вдома</Link>. Заміни теж враховуються.

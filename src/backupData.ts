@@ -1,4 +1,5 @@
 import { db, markSeeded } from './db'
+import { getTastes, setTastes } from './tastesData'
 import type { Dish, Ingredient, PantryItem, Role, Variant } from './types'
 
 /**
@@ -9,9 +10,9 @@ const APP = 'stravy'
 const VERSION = 1
 
 interface FileDish extends Omit<Dish, 'photo'> { photo?: string }
-interface BackupFile { app: string; version: number; exportedAt: string; dishes: FileDish[]; pantry: PantryItem[] }
+interface BackupFile { app: string; version: number; exportedAt: string; dishes: FileDish[]; pantry: PantryItem[]; tastes?: string[] }
 
-export interface ParsedBackup { exportedAt: Date | null; dishes: Dish[]; pantry: PantryItem[] }
+export interface ParsedBackup { exportedAt: Date | null; dishes: Dish[]; pantry: PantryItem[]; tastes?: string[] }
 
 const blobToDataUrl = (b: Blob) => new Promise<string>((res, rej) => {
   const r = new FileReader()
@@ -25,7 +26,8 @@ export async function exportFile(): Promise<{ file: File; dishes: number }> {
   const out: BackupFile = {
     app: APP, version: VERSION, exportedAt: new Date().toISOString(),
     dishes: await Promise.all(dishes.map(async d => ({ ...d, photo: d.photo ? await blobToDataUrl(d.photo) : undefined }))),
-    pantry
+    pantry,
+    tastes: await getTastes()
   }
   const day = new Date().toISOString().slice(0, 10)
   const file = new File([JSON.stringify(out)], `stravy-${day}.json`, { type: 'application/json' })
@@ -108,7 +110,8 @@ export async function parseBackup(text: string): Promise<ParsedBackup> {
   if (new Set(dishes.map(d => d.id)).size !== dishes.length) throw new BadFile('У файлі повторюються страви')
   const pantry = [...new Map(strArr((f.pantry ?? []).map(p => p?.name)).map(n => [n.trim().toLowerCase(), { name: n.trim() }])).values()].filter(p => p.name)
   const at = f.exportedAt ? new Date(f.exportedAt) : null
-  return { exportedAt: at && !isNaN(+at) ? at : null, dishes, pantry }
+  const tastes = Array.isArray(f.tastes) ? [...new Set(strArr(f.tastes).map(t => t.trim()).filter(Boolean))] : undefined
+  return { exportedAt: at && !isNaN(+at) ? at : null, dishes, pantry, tastes }
 }
 
 export const isBadFile = (e: unknown): e is Error => e instanceof BadFile
@@ -120,6 +123,7 @@ export async function replaceAll(b: ParsedBackup) {
     await db.pantry.clear()
     await db.dishes.bulkAdd(b.dishes)
     await db.pantry.bulkAdd(b.pantry)
+    if (b.tastes) await setTastes(b.tastes)
     await markSeeded()
   })
 }
