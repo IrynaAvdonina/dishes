@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { DndContext, PointerSensor, TouchSensor, KeyboardSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
@@ -76,6 +76,21 @@ export default function Catalog() {
   const [sheet, setSheet] = useState<'sort' | 'filters' | 'backup' | null>(null)
   const [reorder, setReorder] = useState(false)
   const [showHidden, setShowHidden] = useState(false)
+  // пошук, пілюлі й рядок «N страв · сортування» ховаються при прокрутці вниз і повертаються при прокрутці вгору
+  const [shut, setShut] = useState(false)
+  const lastTop = useRef(0)
+  const quietUntil = useRef(0)
+  const onListScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget, top = el.scrollTop, dy = top - lastTop.current
+    lastTop.current = top
+    if (performance.now() < quietUntil.current) return // поки панель згортається, висота списку змінюється
+    const typing = document.activeElement?.getAttribute('aria-label') === 'Пошук страви'
+    let next = shut
+    if (top < 24) next = false
+    else if (dy > 6 && !typing && el.scrollHeight - el.clientHeight > 200) next = true
+    else if (dy < -6) next = false
+    if (next !== shut) { setShut(next); quietUntil.current = performance.now() + 300 }
+  }
   // новий порядок після перетягування, поки база ще зберігає (щоб рядок не «стрибав» назад)
   const [pendingOrder, setPendingOrder] = useState<Map<number, number> | null>(null)
   useEffect(() => setPendingOrder(null), [all])
@@ -130,6 +145,7 @@ export default function Catalog() {
       </header>
       <div className="scallop" />
 
+      <div className={'collapse' + (shut && !reorder ? ' shut' : '')}><div>
       <div className="row1">
         <div className="search">
           <IcSearch />
@@ -163,8 +179,9 @@ export default function Catalog() {
       )}
 
       <div className="meta">{visible.length} {plural(visible.length, 'страва', 'страви', 'страв')} · {cur.label}</div>
+      </div></div>
 
-      <div className="scroll list">
+      <div className="scroll list" onScroll={onListScroll}>
         {reorder ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
             <SortableContext items={visible.map(d => d.id!)} strategy={verticalListSortingStrategy}>
