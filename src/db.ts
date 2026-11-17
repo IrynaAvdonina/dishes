@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Dish, PantryItem } from './types'
+import type { Dish, Ingredient, PantryItem } from './types'
 import { seedDishes, seedPantry } from './seed'
 
 interface Meta { key: string; value: unknown }
@@ -16,6 +16,20 @@ class AppDB extends Dexie {
     })
     // службові позначки (напр. «приклади вже додавались»)
     this.version(2).stores({ meta: 'key' })
+    // одноразово для вже збережених даних: без кількостей і без солі (сіль є завжди)
+    this.version(3).upgrade(async tx => {
+      const isSalt = (n: string) => n.trim().toLowerCase() === 'сіль'
+      const strip = (list?: (Ingredient & { amount?: string })[]) =>
+        list?.filter(g => !isSalt(g.name)).map(({ amount: _a, ...g }) => g)
+      await tx.table('dishes').toCollection().modify((d: Dish) => {
+        d.ingredients = strip(d.ingredients) ?? []
+        d.variants = d.variants.map(v => {
+          const add = strip(v.addIngredients)
+          return add?.length ? { ...v, addIngredients: add } : { id: v.id, name: v.name }
+        })
+      })
+      await tx.table('pantry').filter((p: PantryItem) => isSalt(p.name)).delete()
+    })
   }
 }
 

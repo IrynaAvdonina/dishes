@@ -5,7 +5,6 @@ export const TASTES = ['пікантне', 'ситне', 'легке', 'хрус
 
 export interface Ingredient {
   name: string
-  amount: string
   /** обов'язковий інгредієнт */
   required: boolean
   /** інгредієнти з однаковою групою взаємозамінні («кріп або петрушка») */

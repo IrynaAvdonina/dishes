@@ -71,15 +71,22 @@ export default function DishPage() {
         </div>
 
         <div style={{ padding: '18px 20px 0' }}>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 32, padding: '0 14px', borderRadius: '16px 4px 16px 16px', background: ROLE_BG[dish.role], fontSize: 13, fontWeight: 600 }}>
-            <RoleGlyph role={dish.role} s={14} />{ROLE_LABEL[dish.role]}
-          </span>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, height: 32, padding: '0 14px', borderRadius: '16px 4px 16px 16px', background: ROLE_BG[dish.role], fontSize: 13, fontWeight: 600 }}>
+              <RoleGlyph role={dish.role} s={14} />{ROLE_LABEL[dish.role]}
+            </span>
+            {/* духовку показуємо лише коли потрібна, маленькою пілюлею як роль */}
+            {dish.oven && (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 32, padding: '0 14px', borderRadius: '4px 16px 16px 16px', background: '#FBE3A0', color: '#5B4A00', fontSize: 13, fontWeight: 600 }}>
+                <IcOven />Духовка
+              </span>
+            )}
+          </div>
           <h1 className="u" style={{ margin: '12px 0 0', fontSize: 24, lineHeight: 1.2, color: 'var(--cobalt)' }}>{dish.name}</h1>
 
           <div className="stats">
             <div className="stat" style={{ background: '#EEF1FB', borderRadius: '18px 18px 4px 18px' }}><div className="k" style={{ color: 'var(--mute)' }}>Час</div><div className="v">{dish.timeMin} хв</div></div>
-            <div className="stat" style={{ background: '#FDF4CF', borderRadius: '18px 4px 18px 18px' }}><div className="k" style={{ color: '#5B4A00' }}>Духовка</div><div className="v">{dish.oven ? <><IcOven />Потрібна</> : 'Не потрібна'}</div></div>
-            <div className="stat" style={{ background: '#E5EBFC', borderRadius: '4px 18px 18px 18px' }}><div className="k" style={{ color: 'var(--mute)' }}>Інгредієнтів</div><div className="v">{rows.length}</div></div>
+            <div className="stat" style={{ background: '#E5EBFC', borderRadius: '18px 4px 18px 18px' }}><div className="k" style={{ color: 'var(--mute)' }}>Інгредієнтів</div><div className="v">{rows.length}</div></div>
           </div>
           {(dish.effort || dish.love) && (
             <div className="stats" style={{ marginTop: 8 }}>
@@ -126,7 +133,7 @@ export default function DishPage() {
                   <span className="mark" style={{ borderRadius: lack && !pick ? 3 : '50%', background: pick ? '#9FB1EE' : lack ? '#fff' : '#3F8F55', border: pick ? '2px solid #3149B8' : lack ? '2px solid #C4572A' : 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 15.5, fontWeight: 600 }}>{label}</div>
-                    <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 2 }}>{pick ? `замість цього: ${pick}` : g.amount}</div>
+                    {pick && <div style={{ fontSize: 12.5, color: 'var(--mute)', marginTop: 2 }}>замість цього: {pick}</div>}
                   </div>
                   <span style={{ fontSize: 13, fontWeight: 600, color: col }}>{state}</span>
                 </div>

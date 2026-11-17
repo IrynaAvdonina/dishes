@@ -39,8 +39,6 @@ function ItemEditor({ it, n, where = '', onChange, onRemove }: { it: ItemDraft; 
           {j > 0 && <span className="or">або</span>}
           <input className="inp" value={name} onChange={e => setName(j, e.target.value)} autoCapitalize="none"
             placeholder={j ? 'інший інгредієнт' : 'Інгредієнт'} aria-label={j ? `Альтернатива ${j} до «${it.names[0]}»` : `Назва інгредієнта ${n}${where}`} />
-          {j === 0 && <input className="inp" style={{ flex: 'none', width: 110 }} value={it.amount} onChange={e => onChange({ ...it, amount: e.target.value })}
-            placeholder="кількість" aria-label={`Кількість: ${label}`} />}
           {j === 0
             ? <button className="iconbtn" aria-label={`Прибрати інгредієнт: ${label}`} onClick={onRemove}><IcClose /></button>
             : <button className="iconbtn" aria-label={`Прибрати альтернативу: ${name || j}`} onClick={() => onChange({ ...it, names: it.names.filter((_, k) => k !== j) })}><IcClose /></button>}

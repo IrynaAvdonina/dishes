@@ -7,7 +7,6 @@ import type { Dish, Ingredient, Role, Variant } from './types'
 export interface ItemDraft {
   key: string
   names: string[]
-  amount: string
   required: boolean
   /** заміни через кому */
   replacements: string
@@ -37,7 +36,7 @@ export interface Draft {
 let seq = 0
 export const newKey = () => `k${Date.now().toString(36)}${(seq++).toString(36)}`
 
-export const emptyItem = (): ItemDraft => ({ key: newKey(), names: [''], amount: '', required: true, replacements: '' })
+export const emptyItem = (): ItemDraft => ({ key: newKey(), names: [''], required: true, replacements: '' })
 
 export const emptyDraft = (): Draft => ({
   name: '', role: null, timeMin: '', oven: false, effort: 0, love: 0, tags: [], items: [emptyItem()], variants: []
@@ -51,11 +50,10 @@ export function toItems(ings: Ingredient[] = []): ItemDraft[] {
     const existing = g.group ? byGroup.get(g.group) : undefined
     if (existing) {
       existing.names.push(g.name)
-      if (!existing.amount && g.amount) existing.amount = g.amount
       continue
     }
     const item: ItemDraft = {
-      key: newKey(), names: [g.name], amount: g.amount, required: g.required,
+      key: newKey(), names: [g.name], required: g.required,
       replacements: (g.replacements ?? []).join(', ')
     }
     if (g.group) byGroup.set(g.group, item)
@@ -92,7 +90,7 @@ export function fromItems(items: ItemDraft[], usedGroups: Set<string>): Ingredie
       usedGroups.add(group)
     }
     for (const name of names) {
-      const ing: Ingredient = { name, amount: clean(it.amount), required: it.required }
+      const ing: Ingredient = { name, required: it.required }
       if (group) ing.group = group
       if (replacements.length) ing.replacements = replacements
       out.push(ing)

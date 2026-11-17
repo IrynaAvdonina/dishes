@@ -59,7 +59,7 @@ function ingredient(v: unknown): Ingredient | null {
   if (!v || typeof v !== 'object') return null
   const g = v as Record<string, unknown>
   if (!isStr(g.name) || !g.name.trim()) return null
-  const ing: Ingredient = { name: g.name, amount: isStr(g.amount) ? g.amount : '', required: g.required !== false }
+  const ing: Ingredient = { name: g.name, required: g.required !== false }
   if (isStr(g.group) && g.group) ing.group = g.group
   const rep = strArr(g.replacements)
   if (rep.length) ing.replacements = rep
