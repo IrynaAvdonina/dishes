@@ -2,10 +2,11 @@ import { useState } from 'react'
 import { db } from './db'
 import { canShareFiles, downloadFile, exportFile, isBadFile, parseBackup, replaceAll, type ParsedBackup } from './backupData'
 import { plural } from './logic'
+import { seedDishes } from './seed'
 
 type Stage =
   | { k: 'menu' }
-  | { k: 'confirm'; data: ParsedBackup; current: number }
+  | { k: 'confirm'; data: ParsedBackup; current: number; base?: boolean }
   | { k: 'done'; text: string }
 
 const strav = (n: number) => `${n} ${plural(n, 'страва', 'страви', 'страв')}`
@@ -40,9 +41,15 @@ export default function BackupSheet({ onClose }: { onClose: () => void }) {
     const data = await parseBackup(await f.text())
     setStage({ k: 'confirm', data, current: await db.dishes.count() })
   })
-  const apply = (data: ParsedBackup) => run(async () => {
+  // базовий набір страв (той, що бачить кожен новий користувач); ваші продукти лишаються
+  const pickBase = () => run(async () => {
+    const data: ParsedBackup = { exportedAt: null, dishes: seedDishes(), pantry: await db.pantry.toArray() }
+    setStage({ k: 'confirm', data, current: await db.dishes.count(), base: true })
+  })
+  const apply = (data: ParsedBackup, base?: boolean) => run(async () => {
     await replaceAll(data)
-    setStage({ k: 'done', text: `Відновлено ${strav(data.dishes.length)} і ${data.pantry.length} ${plural(data.pantry.length, 'продукт', 'продукти', 'продуктів')}.` })
+    setStage({ k: 'done', text: base ? `Завантажено базовий набір: ${strav(data.dishes.length)}. Ваші продукти залишились.`
+      : `Відновлено ${strav(data.dishes.length)} і ${data.pantry.length} ${plural(data.pantry.length, 'продукт', 'продукти', 'продуктів')}.` })
   })
 
   return (
@@ -63,16 +70,19 @@ export default function BackupSheet({ onClose }: { onClose: () => void }) {
             <input type="file" accept="application/json,.json" hidden disabled={busy} onChange={e => { pick(e.target.files?.[0]); e.target.value = '' }} />
           </label>
           <div className="hint">Усі поточні дані буде замінено вмістом файлу. Перед заміною застосунок перепитає.</div>
+          <button className="dashed" style={{ marginTop: 14, borderColor: '#B7C3EE' }} disabled={busy} onClick={pickBase}>Базовий набір страв</button>
+          <div className="hint">Замінити страви стартовим набором (як у нового користувача). «Мої продукти» залишаться.</div>
         </>)}
 
         {stage.k === 'confirm' && (<>
-          <h2 className="u">Замінити всі дані?</h2>
+          <h2 className="u">{stage.base ? 'Замінити страви?' : 'Замінити всі дані?'}</h2>
           <div style={{ fontSize: 14.5, lineHeight: 1.45, margin: '10px 0 4px' }}>
+            {stage.base ? <>У базовому наборі: <b>{strav(stage.data.dishes.length)}</b> без фото. Ваші продукти залишаться.</> : <>
             У файлі: <b>{strav(stage.data.dishes.length)}</b>, {stage.data.pantry.length} {plural(stage.data.pantry.length, 'продукт', 'продукти', 'продуктів')}
-            {stage.data.exportedAt && <>, збережено {fmtDate(stage.data.exportedAt)}</>}.
+            {stage.data.exportedAt && <>, збережено {fmtDate(stage.data.exportedAt)}</>}.</>}
           </div>
-          <div className="warnbox" style={{ marginTop: 10 }}>Зараз у застосунку {strav(stage.current)}. Вони зникнуть і будуть замінені стравами з файлу. Скасувати це не можна.</div>
-          <button className="primary" style={{ marginTop: 16, background: 'var(--warn)' }} disabled={busy} onClick={() => apply(stage.data)}>Замінити</button>
+          <div className="warnbox" style={{ marginTop: 10 }}>Зараз у застосунку {strav(stage.current)}. Вони зникнуть і будуть замінені {stage.base ? 'базовим набором' : 'стравами з файлу'}. Скасувати це не можна.</div>
+          <button className="primary" style={{ marginTop: 16, background: 'var(--warn)' }} disabled={busy} onClick={() => apply(stage.data, stage.base)}>Замінити</button>
           <button className="dashed" style={{ marginTop: 10 }} disabled={busy} onClick={save}>Спершу зберегти поточні дані</button>
           <button className="textbtn" style={{ width: '100%', marginTop: 6 }} disabled={busy} onClick={() => { setStage({ k: 'menu' }); setMsg(null) }}>Скасувати</button>
         </>)}
