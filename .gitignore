@@ -1,0 +1,4 @@
+node_modules
+dist
+# локальні налаштування Claude Code (шляхи на цьому комп'ютері)
+.claude/
