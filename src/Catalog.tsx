@@ -19,7 +19,7 @@ import BackupSheet from './Backup'
 const SORTS: { k: SortKey; label: string; short: string; hint: string; a: string; b: string }[] = [
   { k: 'manual', label: 'Мій порядок', short: 'Мій', hint: 'Так, як ви розставили вручну', a: 'За вашим порядком', b: 'У зворотному' },
   { k: 'time', label: 'За часом', short: 'Час', hint: 'Від швидких до довгих', a: 'Спершу швидкі', b: 'Спершу довгі' },
-  { k: 'ing', label: 'За кількістю інгредієнтів', short: 'Інгр.', hint: 'Від простих до складних', a: 'Спершу прості', b: 'Спершу складні' },
+  { k: 'have', label: 'За наявністю', short: 'Є', hint: 'Від страв, для яких усе є вдома, до тих, де нічого немає', a: 'Спершу все є', b: 'Спершу нічого немає' },
   { k: 'name', label: 'За назвою', short: 'А–Я', hint: 'За алфавітом', a: 'А → Я', b: 'Я → А' },
   { k: 'love', label: 'Найулюбленіші', short: '♥', hint: 'За сердечками; без оцінки — у кінці', a: 'Спершу улюблені', b: 'Спершу найменш улюблені' },
   { k: 'effort', label: 'Найпростіші', short: '★', hint: 'За зірочками складності; без оцінки — у кінці', a: 'Спершу прості', b: 'Спершу складні' }
@@ -40,6 +40,7 @@ function RowBody({ d, pantry, sortKey }: { d: Dish; pantry: Set<string>; sortKey
         <div className="dname">{d.name}</div>
         <div className="dsub">
           {sortKey === 'time' && <b>{d.timeMin} хв</b>}
+          {sortKey === 'have' && <b style={{ color: cov.missing.length ? 'var(--mute)' : '#2F6B3A' }}>є {have.length} з {have.length + cov.missing.length}</b>}
           {sortKey === 'love' && (d.love ? <RatingView kind="love" value={d.love} s={14} /> : <span>без оцінки</span>)}
           {sortKey === 'effort' && (d.effort ? <RatingView kind="effort" value={d.effort} s={14} /> : <span>без оцінки</span>)}
         </div>
@@ -75,7 +76,8 @@ export default function Catalog() {
   const [q, setQ] = useScreenState('catalog.q', '')
   const [filters, setFiltersS] = useState<Filters>(() => mergeFilters(load<Partial<Filters> | null>('filters', null)))
   const tastes = useTastes()
-  const [sortKey, setSortKeyS] = useState<SortKey>(() => load('sortKey', 'manual'))
+  // старе збережене сортування «за кількістю інгредієнтів» замінене на «за наявністю»
+  const [sortKey, setSortKeyS] = useState<SortKey>(() => { const k = load<string>('sortKey', 'manual'); return (k === 'ing' ? 'have' : k) as SortKey })
   const [dir, setDirS] = useState<Dir>(() => load('dir', 'asc'))
   const [sheet, setSheet] = useState<'sort' | 'filters' | 'backup' | null>(null)
   const [reorder, setReorder] = useState(false)
@@ -107,7 +109,7 @@ export default function Catalog() {
   const withPending = pendingOrder ? all.map(d => pendingOrder.has(d.id!) ? { ...d, order: pendingOrder.get(d.id!)! } : d) : all
   const visible = sortDishes(
     withPending.filter(d => !d.hiddenAt && passes(d, live) && matchesSearch(d, needle)),
-    sortKey, dir)
+    sortKey, dir, pantry)
   const cur = SORTS.find(s => s.k === sortKey)!
   const fcount = activeFilterCount(live)
   // чи щось вибрано в схованій панелі (щоб показати крапку на кнопці)

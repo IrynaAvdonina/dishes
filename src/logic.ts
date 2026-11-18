@@ -7,7 +7,7 @@ export function mergeFilters(saved: Partial<Filters> | null | undefined): Filter
   return f
 }
 
-export type SortKey = 'manual' | 'time' | 'ing' | 'name' | 'love' | 'effort'
+export type SortKey = 'manual' | 'time' | 'have' | 'name' | 'love' | 'effort'
 export type Dir = 'asc' | 'desc'
 
 export interface Filters {
@@ -37,11 +37,20 @@ export function ingredientCount(ings: Ingredient[]) {
   return new Set(ings.map(g => g.group ?? g.name)).size
 }
 
-export function sortDishes(list: Dish[], key: SortKey, dir: Dir) {
+/** Скільки обов'язкового є вдома (заміни теж рахуються) із загальної кількості. */
+export function availability(d: Dish, pantry: Set<string>) {
+  const c = coverage(d.ingredients, pantry)
+  const have = c.have.length + c.subs.length
+  return { have, total: have + c.missing.length }
+}
+
+export function sortDishes(list: Dish[], key: SortKey, dir: Dir, pantry: Set<string> = new Set()) {
   const s = dir === 'desc' ? -1 : 1
+  // «за наявністю»: спершу страви, для яких є все, наприкінці — де нічого немає
+  const av = key === 'have' ? new Map(list.map(d => { const a = availability(d, pantry); return [d, { share: a.total ? a.have / a.total : 1, miss: a.total - a.have }] })) : null
   const main = (x: Dish, y: Dish) =>
     key === 'time' ? x.timeMin - y.timeMin
-    : key === 'ing' ? ingredientCount(x.ingredients) - ingredientCount(y.ingredients)
+    : av ? (av.get(y)!.share - av.get(x)!.share) || (av.get(x)!.miss - av.get(y)!.miss)
     : key === 'name' ? x.name.localeCompare(y.name, 'uk')
     // без оцінки — у кінці списку
     : key === 'love' ? (y.love ?? 0) - (x.love ?? 0)

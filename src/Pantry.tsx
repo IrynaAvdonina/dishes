@@ -34,16 +34,24 @@ function TastesSection({ dishes, onUndo }: { dishes: Dish[]; onUndo: (u: Undo) =
 
   return (<>
     <h2 className="u" style={{ margin: '28px 0 4px', fontSize: 17, color: 'var(--cobalt)' }}>Смаки</h2>
-    <div className="hint">Ярлики для страв і фільтра «Смак» у каталозі. Натисніть на смак, щоб перейменувати або видалити.</div>
+    <div className="hint">Ярлики для страв і фільтра «Смак» у каталозі. «×» — видалити смак, натискання на назву — перейменувати.</div>
     <div className="pills" style={{ marginTop: 8 }}>
       {tastes.map((t, i) => {
         const n = used(t)
+        const st = pillStyle(editing === t, i)
         return (
-          <button key={t} aria-expanded={editing === t} aria-label={`Смак «${t}», у ${n} ${plural(n, 'страві', 'стравах', 'стравах')}. Змінити`}
-            onClick={() => { setEditing(editing === t ? null : t); setDraft(t); setErr('') }}
-            style={{ ...pillStyle(editing === t, i), height: 44, padding: '0 16px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            {t}<span style={{ fontSize: 12, opacity: .7 }}>{n}</span>
-          </button>
+          // назва — перейменувати, «×» — одразу видалити (можна повернути з повідомлення внизу)
+          <span key={t} style={{ ...st, height: 44, display: 'inline-flex', alignItems: 'center', overflow: 'hidden' }}>
+            <button aria-expanded={editing === t} aria-label={`Смак «${t}», у ${n} ${plural(n, 'страві', 'стравах', 'стравах')}. Перейменувати`}
+              onClick={() => { setEditing(editing === t ? null : t); setDraft(t); setErr('') }}
+              style={{ height: 44, border: 0, background: 'transparent', color: 'inherit', padding: '0 4px 0 16px', fontSize: 14, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              {t}<span style={{ fontSize: 12, opacity: .7 }}>{n}</span>
+            </button>
+            <button aria-label={`Видалити смак «${t}»`} onClick={() => del(t)}
+              style={{ width: 44, height: 44, border: 0, background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 8px 0 0' }}>
+              <IcClose c={editing === t ? '#fff' : '#8C99CE'} />
+            </button>
+          </span>
         )
       })}
     </div>
