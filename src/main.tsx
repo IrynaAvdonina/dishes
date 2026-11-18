@@ -1,13 +1,13 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { createHashRouter, RouterProvider } from 'react-router-dom'
+import { createHashRouter, Navigate, RouterProvider } from 'react-router-dom'
 import { ensureSeed } from './db'
 import Catalog from './Catalog'
 import DishPage from './DishPage'
 import DishForm from './DishForm'
 import Pantry from './Pantry'
 import Search from './Search'
-import Pairs from './Pairs'
+import Shopping from './Shopping'
 // шрифти лежать у самому застосунку, щоб працювали без інтернету
 import '@fontsource/onest/400.css'
 import '@fontsource/onest/500.css'
@@ -21,7 +21,9 @@ const router = createHashRouter([
   { path: '/new', element: <DishForm /> },
   { path: '/pantry', element: <Pantry /> },
   { path: '/search', element: <Search /> },
-  { path: '/pairs', element: <Pairs /> },
+  { path: '/shopping', element: <Shopping /> },
+  // колишня вкладка «Пари» тепер «Покупки»
+  { path: '/pairs', element: <Navigate to="/shopping" replace /> },
   { path: '/dish/:id', element: <DishPage /> },
   { path: '/dish/:id/edit', element: <DishForm /> }
 ])

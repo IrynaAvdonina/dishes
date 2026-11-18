@@ -4,10 +4,9 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
 import { ROLE_LABEL, type Dish, type Ingredient } from './types'
 import { isStaple, missing, norm, pantrySet } from './logic'
-import { MiniThumb, tintOf, usePhotoUrls } from './Thumb'
-import DishPicker from './DishPicker'
-import { addPair, partnerRole, removePair } from './pairsData'
+import { tintOf, usePhotoUrls } from './Thumb'
 import { compressPhoto } from './photo'
+import { addToShopping, useShopping } from './shoppingData'
 import { RATE, RatingView } from './Rating'
 import { canGoBack } from './ui'
 import { IcBack, IcCamera, IcCheck, IcClose, IcStar, IcTrash, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
@@ -27,12 +26,11 @@ export default function DishPage() {
   const [variantId, setVariantId] = useState<string | null>(params.get('v'))
   const [open, setOpen] = useState<string | null>(null)
   const [chosen, setChosen] = useState<Record<string, string | null>>({})
-  const [picking, setPicking] = useState(false)
   // видалення фото — у два натискання: «кошик» → «Видалити фото?»
   const [askDelPhoto, setAskDelPhoto] = useState(false)
   useEffect(() => { if (!askDelPhoto) return; const t = setTimeout(() => setAskDelPhoto(false), 4000); return () => clearTimeout(t) }, [askDelPhoto])
-  const all = useLiveQuery(() => db.dishes.toArray(), [])
   const urls = usePhotoUrls(dish?.photos)
+  const shopping = useShopping()
   const [photoIdx, setPhotoIdx] = useState(0)
   const gallery = useRef<HTMLDivElement>(null)
   // якщо сторінку відкрито напряму (без історії), «назад» веде в каталог, а не з застосунку
@@ -58,11 +56,6 @@ export default function DishPage() {
   const rows = ings.filter(g => { if (!g.group) return true; if (shownGroups.has(g.group)) return false; shownGroups.add(g.group); return true })
   const lackLeft = rows.filter(g => isLack(g) && !chosen[key(g)])
   const [bg, ink] = tintOf(dish.id!)
-  // пари: лише гарнір ↔ білок
-  const pRole = partnerRole(dish.role)
-  const partners = (all ?? []).filter(d => dish.pairs.includes(d.id!) && pRole === d.role)
-  const candidates = (all ?? []).filter(d => d.role === pRole && (!d.hiddenAt || dish.pairs.includes(d.id!)))
-  const togglePair = (d: Dish) => dish.pairs.includes(d.id!) ? removePair(dish.id!, d.id!) : addPair(dish.id!, d.id!)
 
   /** Додати продукт у «Мої продукти» або прибрати звідти (без урахування регістру). */
   const toggleProduct = async (name: string) => {
@@ -153,9 +146,24 @@ export default function DishPage() {
             {dish.tags.map((t, i) => <span key={t} className="tag" style={{ background: TAGC[i % 5][0], color: TAGC[i % 5][1] }}>{t}</span>)}
           </div>
 
-          {lackLeft.length > 0 && (
-            <div className="warnbox"><b>Не вистачає:</b> {lackLeft.map(g => g.group ? ings.filter(x => x.group === g.group).map(x => x.name).join(' або ') : g.name).join(', ')}.</div>
-          )}
+          {lackLeft.length > 0 && (() => {
+            const names = lackLeft.map(g => g.group ? ings.filter(x => x.group === g.group).map(x => x.name).join(' або ') : g.name)
+            // чого з відсутнього ще немає в списку покупок
+            const notListed = names.filter(n => !(shopping ?? []).some(i => !i.done && norm(i.name) === norm(n)))
+            return (
+              <div className="warnbox">
+                <b>Не вистачає:</b> {names.join(', ')}.
+                <div style={{ marginTop: 8 }}>
+                  {notListed.length > 0
+                    ? <button className="small" onClick={() => addToShopping(notListed)}
+                        style={{ border: 0, borderRadius: '16px 16px 4px 16px', background: 'var(--cobalt)', color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                        <IcPlus s={16} />Додати {notListed.length < names.length ? 'решту ' : ''}в покупки
+                      </button>
+                    : <Link to="/shopping" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 44, fontWeight: 600, color: '#2F6B3A' }}><IcCheck c="#2F6B3A" s={14} />Уже в покупках →</Link>}
+                </div>
+              </div>
+            )
+          })()}
 
           {dish.variants.length > 0 && (<>
             <h2 className="u" style={{ margin: '26px 0 12px', fontSize: 17, color: 'var(--cobalt)' }}>Варіанти</h2>
@@ -241,29 +249,9 @@ export default function DishPage() {
             )
           })}
 
-          {pRole && (<>
-            <h2 className="u" style={{ margin: '26px 0 0', fontSize: 17, color: 'var(--cobalt)' }}>Пасує до</h2>
-            <div className="scallop" style={{ marginTop: 8 }} />
-            {partners.length === 0 && <div className="hint" style={{ marginTop: 10 }}>{pRole === 'protein' ? 'Додайте білок' : 'Додайте гарнір'}, з яким ця страва добре поєднується.</div>}
-            {partners.map(p => (
-              <div key={p.id} className="irow" style={{ minHeight: 68, borderBottom: '1px solid var(--line)', gap: 12 }}>
-                <MiniThumb dish={p} size={52} />
-                <Link to={`/dish/${p.id}`} style={{ flex: 1, minWidth: 0, fontSize: 15.5, fontWeight: 600, padding: '12px 0' }}>{p.name}{p.hiddenAt && <span style={{ fontSize: 12.5, color: 'var(--mute)', fontWeight: 500 }}> · прихована</span>}</Link>
-                <button className="iconbtn" aria-label={`Прибрати пару: ${p.name}`} onClick={() => removePair(dish.id!, p.id!)}><IcClose /></button>
-              </div>
-            ))}
-            <button className="dashed" style={{ marginTop: 12, height: 48, fontSize: 14.5 }} onClick={() => setPicking(true)}>
-              <IcPlus c="#3149B8" s={18} />{pRole === 'protein' ? 'Додати білок до пари' : 'Додати гарнір до пари'}
-            </button>
-          </>)}
           <div style={{ height: 120 }} />
         </div>
       </div>
-
-      {picking && pRole && (
-        <DishPicker title={pRole === 'protein' ? 'Білок до пари' : 'Гарнір до пари'} hint={`Позначте, що пасує до «${dish.name}».`}
-          dishes={candidates} selected={new Set(dish.pairs)} onPick={togglePair} onClose={() => setPicking(false)} />
-      )}
 
       <div className="bottombar">
         <button aria-label="Приховати страву" onClick={async () => { await db.dishes.update(dish.id!, { hiddenAt: Date.now() }); goBack() }}

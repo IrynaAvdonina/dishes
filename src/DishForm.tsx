@@ -8,7 +8,6 @@ import { knownNames, similarNames } from './logic'
 import { draftSignature, emptyDraft, emptyItem, fromDraft, newKey, toDraft, validate, type Draft, type Errors, type ItemDraft } from './draft'
 import { compressPhoto } from './photo'
 import { RatingInput } from './Rating'
-import { prunePairs } from './pairsData'
 import { shapeOf, tintOf, usePhotoUrls } from './Thumb'
 import { ROLES, canGoBack, pillStyle } from './ui'
 import { IcBack, IcCamera, IcCheck, IcClose, IcPlate, IcPlus, IcTrash, RoleGlyph } from './icons'
@@ -155,7 +154,6 @@ export default function DishForm() {
     const fields = fromDraft(draft)
     if (id) {
       await db.dishes.update(id, fields)
-      await prunePairs(id) // якщо змінилась роль, пари «гарнір + білок» могли стати недійсними
       leave(goBack)
     } else {
       const last = await db.dishes.orderBy('order').last()

@@ -1,5 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type { Dish, Ingredient, PantryItem } from './types'
+import type { Dish, Ingredient, PantryItem, ShopItem } from './types'
 import { seedDishes, seedPantry } from './seed'
 
 interface Meta { key: string; value: unknown }
@@ -8,6 +8,7 @@ class AppDB extends Dexie {
   dishes!: Table<Dish, number>
   pantry!: Table<PantryItem, string>
   meta!: Table<Meta, string>
+  shopping!: Table<ShopItem, number>
   constructor() {
     super('dishes-app')
     this.version(1).stores({
@@ -45,6 +46,8 @@ class AppDB extends Dexie {
       })
       await tx.table('pantry').filter((p: PantryItem) => isBase(p.name)).delete()
     })
+    // список покупок
+    this.version(6).stores({ shopping: '++id, order' })
     // одноразово: одне фото (photo) → список фото (photos)
     this.version(5).upgrade(async tx => {
       await tx.table('dishes').toCollection().modify((d: Dish & { photo?: Blob }) => {

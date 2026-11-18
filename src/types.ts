@@ -42,6 +42,14 @@ export interface Dish {
   love?: number
 }
 
+/** Пункт списку покупок. done — уже куплено. */
+export interface ShopItem {
+  id?: number
+  name: string
+  done: boolean
+  order: number
+}
+
 export interface PantryItem {
   name: string
 }

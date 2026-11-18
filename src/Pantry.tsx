@@ -4,7 +4,8 @@ import { db } from './db'
 import { isStaple, norm, pantrySet, plural, suggestProducts } from './logic'
 import { pillStyle } from './ui'
 import Tabs from './Tabs'
-import { IcClose, IcPlus, IcSearch } from './icons'
+import { IcChevron, IcClose, IcPlus, IcSearch } from './icons'
+import { useScreenState } from './keepScroll'
 import { addTaste, removeTaste, renameTaste, restoreTaste, useTastes } from './tastesData'
 import type { Dish } from './types'
 
@@ -80,6 +81,8 @@ export default function Pantry() {
   const rows = useLiveQuery(() => db.pantry.toArray(), [])
   const dishes = useLiveQuery(() => db.dishes.toArray(), [])
   const [q, setQ] = useState('')
+  // стрілка: показати всі продукти зі страв, яких ще немає вдома (інакше — лише 16 найчастіших)
+  const [showAll, setShowAll] = useScreenState('pantry.all', false)
   const [undo, setUndo] = useState<Undo | null>(null)
   const timer = useRef<number>(undefined)
   useEffect(() => () => window.clearTimeout(timer.current), [])
@@ -92,7 +95,8 @@ export default function Pantry() {
   const mine = rows
     .filter(p => !needle || norm(p.name).includes(needle))
     .sort((a, b) => a.name.localeCompare(b.name, 'uk'))
-  const sugg = (needle ? suggestions.filter(s => norm(s.name).includes(needle)) : suggestions).slice(0, needle ? 8 : 16)
+  const SHORT = 16
+  const sugg = needle ? suggestions.filter(s => norm(s.name).includes(needle)).slice(0, 8) : showAll ? suggestions : suggestions.slice(0, SHORT)
   const typedNew = needle && !have.has(needle) && !sugg.some(s => norm(s.name) === needle)
   const typedStaple = needle && isStaple(needle)
   const typedHave = needle && have.has(needle) && !typedStaple
@@ -144,8 +148,8 @@ export default function Pantry() {
         )}
 
         {sugg.length > 0 && (<>
-          <h2 className="u" style={{ margin: '22px 0 4px', fontSize: 17, color: 'var(--cobalt)' }}>{needle ? 'Зі страв' : 'Часто потрібні'}</h2>
-          {!needle && <div className="hint">Продукти з ваших страв, яких ще немає в списку. Натисніть, щоб додати.</div>}
+          <h2 className="u" style={{ margin: '22px 0 4px', fontSize: 17, color: 'var(--cobalt)' }}>{needle ? 'Зі страв' : showAll ? 'Немає вдома' : 'Часто потрібні'}</h2>
+          {!needle && <div className="hint">{showAll ? `Усі продукти з ваших страв, яких немає вдома (${suggestions.length}).` : 'Продукти з ваших страв, яких ще немає в списку.'} Натисніть, щоб додати.</div>}
           <div className="pills" style={{ marginTop: 8 }}>
             {sugg.map((s, i) => (
               <button key={s.name} className="pill" style={{ ...pillStyle(false, i), display: 'inline-flex', alignItems: 'center', gap: 6 }}
@@ -154,6 +158,11 @@ export default function Pantry() {
               </button>
             ))}
           </div>
+          {!needle && suggestions.length > SHORT && (
+            <button className="dashed" style={{ marginTop: 10, height: 48, fontSize: 14.5, borderColor: '#B7C3EE' }} aria-expanded={showAll} onClick={() => setShowAll(!showAll)}>
+              <IcChevron up={showAll} />{showAll ? 'Згорнути' : `Усі, яких немає вдома (${suggestions.length})`}
+            </button>
+          )}
         </>)}
 
         <h2 className="u" style={{ margin: '24px 0 4px', fontSize: 17, color: 'var(--cobalt)' }}>Є вдома</h2>

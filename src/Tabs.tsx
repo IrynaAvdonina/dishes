@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useToBuyCount } from './shoppingData'
 
 const S = { width: 24, height: 24, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.9, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true } as const
 
@@ -16,11 +17,11 @@ const IcFind = ({ on }: { on: boolean }) => (
     <path d="M15.5 15.5L20 20" />
   </svg>
 )
-/** Пари: квадрат гарніру + коло білка (як значки ролей). */
-const IcPairs = ({ on }: { on: boolean }) => (
+/** Покупки: аркуш списку з галочкою. */
+const IcShop = ({ on }: { on: boolean }) => (
   <svg {...S}>
-    <rect x="3" y="6" width="10.5" height="10.5" rx="3.2" fill={on ? '#F6D96B' : 'none'} />
-    <circle cx="15.5" cy="12.5" r="5.5" fill={on ? '#F5A97F' : '#fff'} />
+    <rect x="4.5" y="3.5" width="15" height="17" rx="3.5" fill={on ? '#E5EBFC' : 'none'} />
+    <path d="M8 9l1.4 1.4L12 7.8M8 15l1.4 1.4L12 13.8M14.5 9.5H16M14.5 15.5H16" />
   </svg>
 )
 /** Продукти: кошик. */
@@ -34,19 +35,23 @@ const IcBasket = ({ on }: { on: boolean }) => (
 const TABS = [
   { to: '/', label: 'Страви', Icon: IcDishes, end: true, r: '16px 16px 4px 16px' },
   { to: '/search', label: 'Пошук', Icon: IcFind, end: false, r: '16px 4px 16px 16px' },
-  { to: '/pairs', label: 'Пари', Icon: IcPairs, end: false, r: '4px 16px 16px 16px' },
+  { to: '/shopping', label: 'Покупки', Icon: IcShop, end: false, r: '4px 16px 16px 16px' },
   { to: '/pantry', label: 'Продукти', Icon: IcBasket, end: false, r: '16px 16px 16px 4px' }
 ]
 
-/** Нижня панель вкладок у стилі «Тихий фаянс»: фестон зверху, значок у пілюлі з асиметричними кутами. */
+/** Нижня панель вкладок у стилі «Тихий фаянс»: тонка лінія зверху, значок у пілюлі з асиметричними кутами. */
 export default function Tabs() {
+  const toBuy = useToBuyCount()
   return (
     <nav className="tabs" aria-label="Розділи">
       {TABS.map(({ to, label, Icon, end, r }) => (
         <NavLink key={to} to={to} end={end} className={({ isActive }) => isActive ? 'on' : ''}>
           {({ isActive }) => (<>
-            <span className="ti" style={{ borderRadius: r }}><Icon on={isActive} /></span>
-            <span>{label}</span>
+            <span className="ti" style={{ borderRadius: r, position: 'relative' }}>
+              <Icon on={isActive} />
+              {to === '/shopping' && toBuy > 0 && <span className="tbadge-n" aria-hidden="true">{toBuy > 99 ? '99+' : toBuy}</span>}
+            </span>
+            <span>{label}{to === '/shopping' && toBuy > 0 && <span className="sr-only">, купити {toBuy}</span>}</span>
           </>)}
         </NavLink>
       ))}

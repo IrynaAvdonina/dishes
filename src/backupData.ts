@@ -1,6 +1,6 @@
 import { db, markSeeded } from './db'
 import { getTastes, setTastes } from './tastesData'
-import type { Dish, Ingredient, PantryItem, Role, Variant } from './types'
+import type { Dish, Ingredient, PantryItem, Role, Variant, ShopItem } from './types'
 
 /**
  * Резервна копія: один JSON-файл з усіма стравами (разом із фото) і продуктами.
@@ -10,9 +10,9 @@ const APP = 'stravy'
 const VERSION = 1
 
 interface FileDish extends Omit<Dish, 'photos'> { photos?: string[] }
-interface BackupFile { app: string; version: number; exportedAt: string; dishes: FileDish[]; pantry: PantryItem[]; tastes?: string[] }
+interface BackupFile { app: string; version: number; exportedAt: string; dishes: FileDish[]; pantry: PantryItem[]; tastes?: string[]; shopping?: ShopItem[] }
 
-export interface ParsedBackup { exportedAt: Date | null; dishes: Dish[]; pantry: PantryItem[]; tastes?: string[] }
+export interface ParsedBackup { exportedAt: Date | null; dishes: Dish[]; pantry: PantryItem[]; tastes?: string[]; shopping?: ShopItem[] }
 
 const blobToDataUrl = (b: Blob) => new Promise<string>((res, rej) => {
   const r = new FileReader()
@@ -27,7 +27,8 @@ export async function exportFile(): Promise<{ file: File; dishes: number }> {
     app: APP, version: VERSION, exportedAt: new Date().toISOString(),
     dishes: await Promise.all(dishes.map(async d => ({ ...d, photos: d.photos?.length ? await Promise.all(d.photos.map(blobToDataUrl)) : undefined }))),
     pantry,
-    tastes: await getTastes()
+    tastes: await getTastes(),
+    shopping: (await db.shopping.orderBy('order').toArray()).map(({ name, done, order }) => ({ name, done, order }))
   }
   const day = new Date().toISOString().slice(0, 10)
   const file = new File([JSON.stringify(out)], `stravy-${day}.json`, { type: 'application/json' })
@@ -113,19 +114,24 @@ export async function parseBackup(text: string): Promise<ParsedBackup> {
   const pantry = [...new Map(strArr((f.pantry ?? []).map(p => p?.name)).map(n => [n.trim().toLowerCase(), { name: n.trim() }])).values()].filter(p => p.name)
   const at = f.exportedAt ? new Date(f.exportedAt) : null
   const tastes = Array.isArray(f.tastes) ? [...new Set(strArr(f.tastes).map(t => t.trim()).filter(Boolean))] : undefined
-  return { exportedAt: at && !isNaN(+at) ? at : null, dishes, pantry, tastes }
+  const shopping = Array.isArray(f.shopping)
+    ? f.shopping.filter((i): i is ShopItem => !!i && isStr((i as ShopItem).name) && !!(i as ShopItem).name.trim())
+      .map((i, n) => ({ name: i.name.trim(), done: i.done === true, order: typeof i.order === 'number' ? i.order : n }))
+    : undefined
+  return { exportedAt: at && !isNaN(+at) ? at : null, dishes, pantry, tastes, shopping }
 }
 
 export const isBadFile = (e: unknown): e is Error => e instanceof BadFile
 
 /** Повністю замінює дані в застосунку вмістом файлу. */
 export async function replaceAll(b: ParsedBackup) {
-  await db.transaction('rw', db.dishes, db.pantry, db.meta, async () => {
+  await db.transaction('rw', [db.dishes, db.pantry, db.meta, db.shopping], async () => {
     await db.dishes.clear()
     await db.pantry.clear()
     await db.dishes.bulkAdd(b.dishes)
     await db.pantry.bulkAdd(b.pantry)
     if (b.tastes) await setTastes(b.tastes)
+    if (b.shopping) { await db.shopping.clear(); await db.shopping.bulkAdd(b.shopping) }
     await markSeeded()
   })
 }
