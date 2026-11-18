@@ -26,7 +26,8 @@ export function activeFilterCount(f: Filters) {
 }
 
 export function passes(d: Dish, f: Filters) {
-  return f.roles[d.role]
+  // сніданки ролей не мають: фільтр ролей їх не стосується
+  return (d.role === 'breakfast' || f.roles[d.role])
     && (f.oven === 'any' || (f.oven === 'yes') === d.oven)
     && (!f.maxTime || d.timeMin <= f.maxTime)
     && f.tags.every(t => d.tags.includes(t))

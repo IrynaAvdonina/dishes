@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { useBlocker, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { db } from './db'
 import { ROLE_LABEL } from './types'
 import { useTastes } from './tastesData'
@@ -97,8 +97,12 @@ export default function DishForm() {
   const known = useMemo(() => knownNames(allDishes ?? [], pantryRows ?? []), [allDishes, pantryRows])
 
   const [status, setStatus] = useState<'loading' | 'missing' | 'ready'>(id ? 'loading' : 'ready')
-  const [draft, setDraft] = useState<Draft>(emptyDraft)
-  const initial = useRef({ sig: draftSignature(emptyDraft()), photos: [] as Blob[] })
+  // нова страва з розділу «Сніданки» одразу позначена як сніданок
+  const [search] = useSearchParams()
+  const [start] = useState<Draft>(() => search.get('meal') === 'breakfast' && !id ? { ...emptyDraft(), role: 'breakfast' } : emptyDraft())
+  const [draft, setDraft] = useState<Draft>(start)
+  const initial = useRef({ sig: '', photos: [] as Blob[] })
+  if (!initial.current.sig) initial.current.sig = draftSignature(start)
   const [errors, setErrors] = useState<Errors>({})
   const [tried, setTried] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -227,9 +231,21 @@ export default function DishForm() {
             aria-label="Назва страви" aria-invalid={!!errors.name} />
           {errors.name && <div className="err">{errors.name}</div>}
 
-          {/* Роль */}
+          {/* Сніданок чи обід/вечеря */}
+          <h2 className="u">Коли їсти</h2>
+          <div className="pills" role="radiogroup" aria-label="Сніданок чи обід" style={{ marginTop: 8 }}>
+            {([['main', 'Обід і вечеря'], ['breakfast', 'Сніданок']] as const).map(([k, l], i) => {
+              const on = k === 'breakfast' ? draft.role === 'breakfast' : draft.role !== 'breakfast'
+              return <button key={k} className="pill" role="radio" aria-checked={on} style={{ ...pillStyle(on, i), flex: '1 1 0', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}
+                onClick={() => { if (!on) set('role', k === 'breakfast' ? 'breakfast' : null) }}>{k === 'breakfast' && <RoleGlyph role="breakfast" s={16} />}{l}</button>
+            })}
+          </div>
+          {draft.role === 'breakfast' && errors.role && <div className="err">{errors.role}</div>}
+
+          {/* Роль — лише для обідніх страв */}
+          {draft.role !== 'breakfast' && (<>
           <h2 className="u">Роль</h2>
-          <div className="hint">Гарнір і білок можна складати в пари, повна страва — сама по собі.</div>
+          <div className="hint">Гарнір і білок — частини обіду, повна страва — сама по собі.</div>
           <div id="f-role" tabIndex={-1} className="pills" role="radiogroup" aria-label="Роль страви" style={{ outline: 'none' }}>
             {ROLES.map(r => {
               const on = draft.role === r.k
@@ -242,6 +258,7 @@ export default function DishForm() {
             })}
           </div>
           {errors.role && <div className="err">{errors.role}</div>}
+          </>)}
 
           {/* Час і духовка */}
           <h2 className="u">Час і духовка</h2>

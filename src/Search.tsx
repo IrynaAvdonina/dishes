@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from './db'
-import { ROLE_LABEL, type Role } from './types'
+import { ROLE_LABEL, type MainRole } from './types'
 import { bestMatch, norm, pantrySet, plural, type Match } from './logic'
 import Thumb from './Thumb'
 import { useKeepScroll, useScreenState } from './keepScroll'
@@ -37,7 +37,7 @@ export default function Search() {
   const pantryRows = useLiveQuery(() => db.pantry.toArray(), [])
   const pantry = useMemo(() => pantrySet(pantryRows), [pantryRows])
   // вибір пам'ятається, коли відкриваєш страву й повертаєшся
-  const [roles, setRoles] = useScreenState<Record<Role, boolean>>('search.roles', { side: true, protein: true, full: true })
+  const [roles, setRoles] = useScreenState<Record<MainRole, boolean>>('search.roles', { side: true, protein: true, full: true })
   const [want, setWant] = useScreenState<string[]>('search.want', [])
   const [showRest, setShowRest] = useScreenState('search.rest', false)
 
@@ -57,7 +57,8 @@ export default function Search() {
 
   const wantNow = want.filter(w => usable.includes(w))
   const matches = dishes
-    .filter(d => !d.hiddenAt && roles[d.role])
+    // сніданки в пошуку поки не показуємо (окремий розділ)
+    .filter(d => !d.hiddenAt && d.role !== 'breakfast' && roles[d.role])
     .map(d => bestMatch(d, pantry, wantNow))
     .filter((m): m is Match => !!m)
     .sort((a, b) => a.cov.missing.length - b.cov.missing.length || a.cov.subs.length - b.cov.subs.length || (b.dish.love ?? 0) - (a.dish.love ?? 0) || a.dish.order - b.dish.order)
@@ -66,7 +67,7 @@ export default function Search() {
   const two = matches.filter(m => m.cov.missing.length === 2)
   const rest = matches.filter(m => m.cov.missing.length > 2)
 
-  const toggleRole = (r: Role) => setRoles(cur => {
+  const toggleRole = (r: MainRole) => setRoles(cur => {
     const n = { ...cur, [r]: !cur[r] }
     return n.side || n.protein || n.full ? n : cur
   })

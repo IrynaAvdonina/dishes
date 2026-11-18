@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Dish, Ingredient, PantryItem, ShopItem } from './types'
-import { seedDishes, seedPantry } from './seed'
+import { seedBreakfasts, seedDishes, seedPantry } from './seed'
 
 interface Meta { key: string; value: unknown }
 
@@ -48,6 +48,15 @@ class AppDB extends Dexie {
     })
     // список покупок
     this.version(6).stores({ shopping: '++id, order' })
+    // одноразово: класичні сніданки тим, у кого базовий набір уже був (свої страви не чіпаємо, однакові назви пропускаємо)
+    this.version(7).upgrade(async tx => {
+      if (!(await tx.table('meta').get('seeded'))) return
+      const dishes = tx.table('dishes')
+      const all: Dish[] = await dishes.toArray()
+      const names = new Set(all.map(d => d.name.trim().toLowerCase()))
+      let order = all.reduce((m, d) => Math.max(m, d.order), 0)
+      for (const b of seedBreakfasts()) if (!names.has(b.name.toLowerCase())) await dishes.add({ ...b, order: ++order })
+    })
     // одноразово: одне фото (photo) → список фото (photos)
     this.version(5).upgrade(async tx => {
       await tx.table('dishes').toCollection().modify((d: Dish & { photo?: Blob }) => {

@@ -54,7 +54,7 @@ export const canShareFiles = (f?: File) => {
 // ── перевірка файлу ────────────────────────────────────────────────
 
 class BadFile extends Error {}
-const ROLES: Role[] = ['side', 'protein', 'full']
+const ROLES: Role[] = ['side', 'protein', 'full', 'breakfast']
 const isStr = (v: unknown): v is string => typeof v === 'string'
 const strArr = (v: unknown): string[] => Array.isArray(v) ? v.filter(isStr) : []
 

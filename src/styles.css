@@ -112,3 +112,6 @@ nav.tabs a.on .ti{background:var(--soft)}
 /* лічильник на вкладці «Покупки» */
 .tbadge-n{position:absolute;top:-2px;right:6px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#F5A97F;color:#1F2A5C;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff}
 .sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+/* перемикач «Обід і вечеря / Сніданки» */
+.meal-switch{flex:none;display:flex;gap:6px;padding:12px 20px 0}
+.meal-switch button{flex:1;height:44px;border:0;display:flex;align-items:center;justify-content:center;gap:7px;font-size:14px;font-weight:600}

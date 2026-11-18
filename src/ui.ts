@@ -1,8 +1,8 @@
 import type { CSSProperties } from 'react'
-import type { Role } from './types'
+import type { MainRole } from './types'
 
 /** Кольори й форми ролей (пілюлі в каталозі та у формі). */
-export const ROLES: { k: Role; bg: string; dot: string; r: string }[] = [
+export const ROLES: { k: MainRole; bg: string; dot: string; r: string }[] = [
   { k: 'side', bg: '#FDF4CF', dot: '#F6D96B', r: '22px 4px 22px 22px' },
   { k: 'protein', bg: '#FDE6D8', dot: '#F5A97F', r: '4px 22px 22px 22px' },
   { k: 'full', bg: '#E5EBFC', dot: '#9FB1EE', r: '22px 22px 22px 4px' }

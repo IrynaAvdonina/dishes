@@ -11,7 +11,7 @@ import { RATE, RatingView } from './Rating'
 import { canGoBack } from './ui'
 import { IcBack, IcCamera, IcCheck, IcClose, IcStar, IcTrash, IcEyeOff, IcOven, IcPlate, IcPlus, IcSwap, RoleGlyph } from './icons'
 
-const ROLE_BG = { side: '#F6D96B', protein: '#F5A97F', full: '#9FB1EE' }
+const ROLE_BG = { side: '#F6D96B', protein: '#F5A97F', full: '#9FB1EE', breakfast: '#BFE3C8' }
 const TAGC: [string, string][] = [['#E3F1E4', '#2F6B3A'], ['#F6E4F0', '#8A3C74'], ['#E8F3F6', '#2D6577'], ['#FDF4CF', '#8A6B00'], ['#FDE6D8', '#9A4A1C']]
 
 export default function DishPage() {

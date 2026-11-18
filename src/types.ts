@@ -1,6 +1,10 @@
-export type Role = 'side' | 'protein' | 'full'
+/** Ролі обідніх страв */
+export type MainRole = 'side' | 'protein' | 'full'
+/** Сніданок — окремий розділ, без поділу на ролі */
+export type Role = MainRole | 'breakfast'
 
-export const ROLE_LABEL: Record<Role, string> = { side: 'Гарнір', protein: 'Білок', full: 'Повна' }
+export const ROLE_LABEL: Record<Role, string> = { side: 'Гарнір', protein: 'Білок', full: 'Повна', breakfast: 'Сніданок' }
+export const isBreakfast = (d: { role: Role }) => d.role === 'breakfast'
 export const TASTES = ['пікантне', 'ситне', 'легке', 'хрустке', 'солодке'] as const
 
 export interface Ingredient {

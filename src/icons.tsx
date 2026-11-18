@@ -20,6 +20,8 @@ export const IcPlate = ({ c }: { c: string }) => <svg width="52" height="52" vie
 
 export function RoleGlyph({ role, s = 20 }: { role: Role; s?: number }) {
   if (role === 'side') return <svg width={s} height={s} viewBox="0 0 24 24" fill="#F6D96B" stroke="#8A6B00" strokeWidth="1.8" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="5"/></svg>
+  // сніданок — м'ятна чашка
+  if (role === 'breakfast') return <svg width={s} height={s} viewBox="0 0 24 24" fill="#BFE3C8" stroke="#2F6B3A" strokeWidth="1.8" strokeLinejoin="round" aria-hidden="true"><path d="M4 8h12v6a5 5 0 01-5 5H9a5 5 0 01-5-5z"/><path d="M16 10h1.5a2.5 2.5 0 010 5H16" fill="none"/></svg>
   if (role === 'protein') return <svg width={s} height={s} viewBox="0 0 24 24" fill="#F5A97F" stroke="#9A4A1C" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/></svg>
   return <svg width={s} height={s} viewBox="0 0 24 24" fill="#9FB1EE" stroke="#3149B8" strokeWidth="1.8" aria-hidden="true"><path d="M4 20V10a8 8 0 0116 0v10z"/></svg>
 }

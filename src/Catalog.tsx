@@ -5,7 +5,7 @@ import { DndContext, PointerSensor, TouchSensor, KeyboardSensor, closestCenter, 
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy, sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { db } from './db'
-import { ROLE_LABEL, type Dish, type Role } from './types'
+import { ROLE_LABEL, type Dish, type MainRole } from './types'
 import { useTastes } from './tastesData'
 import { activeFilterCount, coverage, matchesSearch, mergeFilters, norm, pantrySet, passes, plural, requiredNames, sortDishes, type Dir, type Filters, type SortKey } from './logic'
 import Thumb from './Thumb'
@@ -13,7 +13,7 @@ import { useKeepScroll, useScreenState } from './keepScroll'
 import { RatingView } from './Rating'
 import Tabs from './Tabs'
 import { ROLES, pillStyle } from './ui'
-import { IcBackup, IcChevron, IcCheck, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
+import { IcBackup, IcChevron, IcCheck, RoleGlyph, IcEyeOff, IcFilter, IcGrip, IcPlus, IcSearch, IcSort } from './icons'
 import BackupSheet from './Backup'
 
 const SORTS: { k: SortKey; label: string; short: string; hint: string; a: string; b: string }[] = [
@@ -82,6 +82,9 @@ export default function Catalog() {
   const [sheet, setSheet] = useState<'sort' | 'filters' | 'backup' | null>(null)
   const [reorder, setReorder] = useState(false)
   const [showHidden, setShowHidden] = useScreenState('catalog.hidden', false)
+  // перемикач угорі: обіди й вечері або сніданки (запам'ятовується)
+  const [meal, setMealS] = useState<'main' | 'breakfast'>(() => load('meal', 'main'))
+  const setMeal = (m: 'main' | 'breakfast') => { setMealS(m); save('meal', m) }
   // пошук, пілюлі й рядок «N страв · сортування» можна сховати кнопкою в заголовку (стан запам'ятовується)
   const [shut, setShutS] = useState<boolean>(() => load('panelShut', false))
   const setShut = (v: boolean) => { setShutS(v); save('panelShut', v) }
@@ -102,18 +105,20 @@ export default function Catalog() {
 
   const keep = useKeepScroll('catalog', !!all)
   if (!all) return null
-  const hidden = all.filter(d => d.hiddenAt)
+  const inMeal = (d: Dish) => meal === 'breakfast' ? d.role === 'breakfast' : d.role !== 'breakfast'
+  const mealCount = (m: 'main' | 'breakfast') => all.filter(d => !d.hiddenAt && (m === 'breakfast') === (d.role === 'breakfast')).length
+  const hidden = all.filter(d => d.hiddenAt && inMeal(d))
   const needle = norm(q)
   // смаки, яких уже немає в списку (видалені у «Продуктах»), у фільтрі не враховуємо
   const live = { ...filters, tags: filters.tags.filter(t => tastes.includes(t)) }
   const withPending = pendingOrder ? all.map(d => pendingOrder.has(d.id!) ? { ...d, order: pendingOrder.get(d.id!)! } : d) : all
   const visible = sortDishes(
-    withPending.filter(d => !d.hiddenAt && passes(d, live) && matchesSearch(d, needle)),
+    withPending.filter(d => !d.hiddenAt && inMeal(d) && passes(d, live) && matchesSearch(d, needle)),
     sortKey, dir, pantry)
   const cur = SORTS.find(s => s.k === sortKey)!
   const fcount = activeFilterCount(live)
   // чи щось вибрано в схованій панелі (щоб показати крапку на кнопці)
-  const panelBusy = !!needle || fcount > 0 || !(filters.roles.side && filters.roles.protein && filters.roles.full)
+  const panelBusy = !!needle || fcount > 0 || (meal === 'main' && !(filters.roles.side && filters.roles.protein && filters.roles.full))
 
   const onDragEnd = async (e: DragEndEvent) => {
     if (!e.over || e.active.id === e.over.id) return
@@ -127,18 +132,18 @@ export default function Catalog() {
     })
   }
 
-  const toggleRole = (r: Role) => {
+  const toggleRole = (r: MainRole) => {
     const n = { ...filters.roles, [r]: !filters.roles[r] }
     if (n.side || n.protein || n.full) setFilters({ ...filters, roles: n })
   }
-  const countOf = (r: Role) => all.filter(d => d.role === r && !d.hiddenAt).length
+  const countOf = (r: MainRole) => all.filter(d => d.role === r && !d.hiddenAt).length
 
   return (
     <div className="app">
       <header className="top">
         <h1 className="u">Страви</h1>
         <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, color: 'var(--mute)' }}>
-          {all.length} стр.
+          {mealCount(meal)} стр.
           <button className="iconbtn" aria-label="Резервна копія: зберегти або відновити дані" onClick={() => setSheet('backup')}><IcBackup /></button>
           {!reorder && (
             <button className="iconbtn" style={{ position: 'relative', borderRadius: '14px 4px 14px 14px' }} aria-expanded={!shut}
@@ -150,6 +155,21 @@ export default function Catalog() {
         </span>
       </header>
       <div className="scallop" />
+
+      {/* обіди й вечері / сніданки */}
+      {!reorder && (
+        <div className="meal-switch" role="radiogroup" aria-label="Які страви показати">
+          {([['main', 'Обід і вечеря'], ['breakfast', 'Сніданки']] as const).map(([k, l], i) => {
+            const on = meal === k
+            return (
+              <button key={k} role="radio" aria-checked={on} onClick={() => setMeal(k)}
+                style={{ borderRadius: i ? '4px 18px 18px 18px' : '18px 18px 4px 18px', background: on ? 'var(--cobalt)' : 'var(--soft)', color: on ? '#fff' : 'var(--mute)' }}>
+                {k === 'breakfast' && <RoleGlyph role="breakfast" s={16} />}{l}<span style={{ opacity: .7, fontWeight: 500 }}>{mealCount(k)}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
 
       <div className={'collapse' + (shut && !reorder ? ' shut' : '')}><div inert={shut && !reorder}>
       <div className="row1">
@@ -163,7 +183,7 @@ export default function Catalog() {
         </button>
       </div>
 
-      {!reorder ? (
+      {!reorder ? (meal === 'breakfast' ? <div style={{ height: 6 }} /> : (
         <div className="chips">
           {ROLES.map(r => {
             const on = filters.roles[r.k]
@@ -177,7 +197,7 @@ export default function Catalog() {
             )
           })}
         </div>
-      ) : (
+      )) : (
         <div className="banner">
           <span>Тримайте ручку і перетягніть рядок на нове місце</span>
           <button onClick={() => setReorder(false)} style={{ height: 36, border: 0, borderRadius: '18px 18px 4px 18px', background: 'var(--cobalt)', color: '#fff', padding: '0 16px', fontSize: 14, fontWeight: 600 }}>Готово</button>
@@ -201,7 +221,10 @@ export default function Catalog() {
           </div>
         ))}
 
-        {visible.length === 0 && (all.length === 0 ? (
+        {visible.length === 0 && meal === 'breakfast' && !all.some(inMeal) ? (
+          <div className="empty"><div className="u" style={{ fontSize: 16, color: 'var(--cobalt)' }}>Сніданків поки немає</div>
+            <div style={{ fontSize: 13.5, color: 'var(--mute)', marginTop: 6, lineHeight: 1.4 }}>Додайте сніданок кнопкою «+»</div></div>
+        ) : visible.length === 0 && (all.length === 0 ? (
           <div className="empty"><div className="u" style={{ fontSize: 16, color: 'var(--cobalt)' }}>Каталог порожній</div>
             <div style={{ fontSize: 13.5, color: 'var(--mute)', marginTop: 6, lineHeight: 1.4 }}>Додайте страву кнопкою «+» або відновіть дані з резервної копії (кнопка вгорі праворуч)</div></div>
         ) : (
@@ -226,7 +249,7 @@ export default function Catalog() {
         <div style={{ height: 90 }} />
       </div>
 
-      {!reorder && <Link to="/new" className="fab" aria-label="Нова страва"><IcPlus /></Link>}
+      {!reorder && <Link to={meal === 'breakfast' ? '/new?meal=breakfast' : '/new'} className="fab" aria-label={meal === 'breakfast' ? 'Новий сніданок' : 'Нова страва'}><IcPlus /></Link>}
       <Tabs />
 
       {sheet === 'sort' && (
